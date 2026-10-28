@@ -1,0 +1,45 @@
+/* Reusable utility and component classes */
+.container-custom {
+  max-width: 1240px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .container-custom {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+/* Hairline borders */
+.border-hairline {
+  border-color: #e5e7eb;
+}
+
+/* Clean cards without excessive elevation */
+.ariq-card {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ariq-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Tabular figures for data tables and counts */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Print styling for certificates and reports */
+@media print {
+  header, footer, .no-print {
+    display: none !important;
+  }
+}

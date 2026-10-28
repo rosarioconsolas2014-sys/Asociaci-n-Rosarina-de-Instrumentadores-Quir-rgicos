@@ -1,0 +1,6 @@
+{
+  "name": "ARIQ - Asociación Rosarina de Instrumentadores Quirúrgicos",
+  "description": "Sitio institucional y plataforma de gestión para la Asociación Rosarina de Instrumentadores Quirúrgicos (Instrumentadores Quirúrgicos Profesionales de Rosario Asociación Civil).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
