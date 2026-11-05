@@ -1,9 +1,19 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Phone, MapPin, ShieldCheck, HeartPulse } from 'lucide-react';
+import { configuracionService } from '../services/configuracionService.js';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const [logoSrc, setLogoSrc] = useState('/images/logo-ariq.png');
+
+  useEffect(() => {
+    configuracionService.getConfiguracion().then((cfg) => {
+      if (cfg?.logotipo_base64) {
+        setLogoSrc(cfg.logotipo_base64);
+      }
+    });
+  }, []);
 
   return (
     <footer className="bg-stone-900 text-stone-300 pt-16 pb-12 border-t border-stone-800">
@@ -13,7 +23,7 @@ export default function Footer() {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <img
-                src="/images/logo-ariq.png"
+                src={logoSrc}
                 alt="Logo ARIQ"
                 className="w-12 h-12 object-contain rounded-full bg-white p-0.5"
                 referrerPolicy="no-referrer"

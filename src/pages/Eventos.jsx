@@ -143,9 +143,10 @@ export default function Eventos() {
                   {/* Event Thumbnail */}
                   <div className="md:w-80 bg-stone-100 relative min-h-[200px] shrink-0">
                     <img
-                      src={ev.imagen_url || '/images/evento-congreso.jpg'}
+                      src={ev.miniatura_base64 || ev.imagen_url || '/images/evento-congreso.jpg'}
                       alt={ev.titulo}
                       className="w-full h-full object-cover"
+                      loading="lazy"
                       referrerPolicy="no-referrer"
                     />
                     <div className="absolute top-3 left-3 bg-red-600 text-white text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded">

@@ -33,6 +33,7 @@ export const configuracionService = {
             mision: data.mision || '',
             vision: data.vision || '',
             valores: data.valores || '',
+            logotipo_base64: data.logotipo_base64 || null,
           };
         }
       } catch (err) {
@@ -61,6 +62,7 @@ export const configuracionService = {
         email_cursos: nuevoValor.contacto?.email_cursos || '',
         horario_atencion: nuevoValor.contacto?.horario_atencion || '',
         redes_sociales: nuevoValor.redes_sociales || {},
+        logotipo_base64: nuevoValor.logotipo_base64 || '',
         updated_at: new Date().toISOString(),
       };
       await setDocument('institutional_settings', 'ariq_main', payload);

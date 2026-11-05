@@ -226,9 +226,10 @@ export default function Cursos() {
                 >
                   <div className="md:w-5/12 bg-stone-100 relative min-h-[220px]">
                     <img
-                      src={curso.imagen_url || '/images/curso-laparoscopia.jpg'}
+                      src={curso.miniatura_base64 || curso.imagen_url || '/images/curso-laparoscopia.jpg'}
                       alt={curso.nombre}
                       className="w-full h-full object-cover"
+                      loading="lazy"
                       referrerPolicy="no-referrer"
                     />
                     <div className="absolute top-3 left-3 bg-stone-900/80 backdrop-blur-xs text-white text-[11px] font-medium px-2.5 py-1 rounded-md capitalize">

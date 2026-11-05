@@ -43,6 +43,7 @@ export async function seedFirestoreIfEmpty() {
         mision: 'Representar gremial, legal y científicamente a los instrumentadores quirúrgicos, velando por la excelencia y la seguridad del paciente.',
         vision: 'Ser el referente indiscutido en formación continua, investigación y regulación de la disciplina quirúrgica en el centro del país.',
         valores: 'Ética profesional, rigor científico, compromiso deontológico, trabajo interdisciplinario y solidaridad gremial.',
+        logotipo_base64: '',
         updated_at: new Date().toISOString(),
       });
       results.settings = true;

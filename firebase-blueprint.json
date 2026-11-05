@@ -21,6 +21,7 @@
         "mision": { "type": "string" },
         "vision": { "type": "string" },
         "valores": { "type": "string" },
+        "logotipo_base64": { "type": "string" },
         "redes_sociales": { "type": "object" },
         "updated_at": { "type": "string" },
         "updated_by": { "type": "string" }

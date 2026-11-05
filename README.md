@@ -8,43 +8,53 @@
 
 Plataforma web institucional y sistema de administración integral para la **Asociación Rosarina de Instrumentadores Quirúrgicos (ARIQ)**, desarrollada con **React, JavaScript y JSX**, sin TypeScript, bajo un diseño responsive moderno, accesible y profesional adaptado a la identidad de la salud y la cirugía.
 
-La infraestructura central de datos, autenticación y archivos se encuentra respaldada por **Firebase (Google Cloud Platform)**:
-- **Cloud Firestore**: Base de datos NoSQL de alta escalabilidad con 10 colecciones estructuradas (incluyendo `system_health_logs` para control de incidentes).
+La arquitectura de datos y autenticación se encuentra respaldada **exclusivamente por Cloud Firestore y Firebase Authentication (sin Firebase Storage)**:
+- **Cloud Firestore**: Base de datos NoSQL centralizada donde persisten **TODOS los datos institucionales**, incluyendo configuraciones, noticias, cursos, eventos, auditorías, incidentes y **todas las imágenes como cadenas Base64 (Data URLs)**.
 - **Firebase Authentication**: Autenticación para Administradores, Editores y Operadores con inicio de sesión por Google y credenciales de correo/contraseña.
-- **Firebase Storage**: Almacenamiento seguro de fotografías quirúrgicas, portadas de cursos, imágenes de noticias y documentación oficial (`ariq-rosario.firebasestorage.app`).
 - **Firebase Hosting**: Publicación del sitio estático con reescritura SPA e integración CI/CD con GitHub Actions.
 
 ---
 
-## 2. SISTEMA AUTOMÁTICO DE MONITOREO Y CONTROL DE PRODUCCIÓN
+## 2. ARQUITECTURA DE IMÁGENES EN BASE64 (SIN FIREBASE STORAGE)
 
-El sistema cuenta con una arquitectura de observabilidad continua de extremo a extremo que evalúa el estado del sitio público, los microservicios de Firebase, los procesos de GitHub Actions y el registro centralizado de incidentes.
+Para simplificar la infraestructura y centralizar la persistencia en una sola fuente de datos atómica, la aplicación **no utiliza Firebase Storage**. Todas las fotografías, imágenes de noticias, banners de cursos, afiches de eventos y el logotipo institucional se procesan y almacenan directamente en Cloud Firestore.
 
-### 2.1 Componentes del Sistema de Monitoreo
+### 2.1 Servicio Centralizado de Imágenes (`src/services/imageService.js`)
+
+El servicio gestiona el ciclo de vida completo de cada recurso visual:
+
+1. **Selección del Archivo:** El usuario administrador elige una imagen desde su dispositivo.
+2. **Validación:** Comprobación estricta de tipo MIME (`image/webp`, `image/jpeg`, `image/png`) y peso original (< 5 MB).
+3. **Redimensionamiento y Compresión en Canvas:**
+   - La imagen se dibuja en un `<canvas>` en memoria y se redimensiona a un máximo de 1200 px (o 400 px para miniaturas).
+   - Se convierte preferentemente a formato **WebP** o **PNG** (en caso de requerir transparencia como el logotipo oficial).
+   - **Límite de tamaño estricto:** `<= 300 KB` post-compresión, garantizando que el documento de Firestore permanezca muy por debajo del límite estructural de 1 MiB.
+4. **Miniaturas Automáticas:** Genera automáticamente una miniatura ultra-liviana (`miniatura_base64`, ~20-50 KB) para optimizar el rendimiento de las cuadrículas y listados públicos, reservando la imagen de alta definición para la vista de detalle.
+5. **Persistencia Directa:** La imagen se guarda como campo `imagen_url` o `logotipo_base64` dentro del documento correspondiente en Firestore.
+
+---
+
+## 3. SISTEMA AUTOMÁTICO DE MONITOREO Y CONTROL DE PRODUCCIÓN
+
+El sistema cuenta con una arquitectura de observabilidad continua de extremo a extremo que evalúa el estado del sitio público, Cloud Firestore, Firebase Authentication, los procesos de GitHub Actions y el registro centralizado de incidentes.
+
+### 3.1 Componentes del Sistema de Monitoreo
 
 1. **Dashboard Técnico en Panel Administrativo (`/admin/sistema`):**
    - Interfaz en tiempo real para supervisión de salud del sistema.
    - Botón interactivo **"Ejecutar Monitoreo Completo"** que ejecuta pruebas reales no destructivas en el cliente.
    - Métricas de latencia de red en milisegundos (`latencyMs`).
+   - Monitor de almacenamiento Base64 en Firestore.
    - Registro y resolución de incidentes con notas administrativas.
    - Exportación de informes de auditoría en formato JSON.
 
 2. **Servicio Central de Monitoreo (`src/services/monitoringService.js`):**
-   - Ejecuta verificaciones atómicas de:
-     - **Disponibilidad Web:** Comprobación HTTP (código 200) y tiempo de respuesta en las 7 rutas obligatorias:
-       - `/` (Inicio)
-       - `/institucional` (Institucional)
-       - `/noticias` (Noticias y publicaciones)
-       - `/cursos` (Cursos y capacitaciones)
-       - `/eventos` (Agenda de eventos y congresos)
-       - `/contacto` (Formulario de contacto)
-       - `/login` (Acceso al panel administrativo)
-     - **Recursos Estáticos:** Verificación de carga y encabezados del logotipo oficial (`/images/logo-ariq.png`).
-     - **Seguridad de Transporte:** Detección de protocolo HTTPS y contexto cifrado (`window.isSecureContext`).
-     - **Cloud Firestore (`ariq-rosario`):** Consultas de lectura a `institutional_settings`, `news`, `courses` y `events`.
-     - **Firebase Authentication:** Estado del proveedor de identidad, persistencia de sesión y dominio de autenticación.
-     - **Firebase Storage:** Accesibilidad al bucket `ariq-rosario.firebasestorage.app`.
-     - **GitHub Actions:** Estado de flujos de trabajo de CI/CD.
+   - Inspección HTTP de las 7 rutas prioritarias: `/`, `/institucional`, `/noticias`, `/cursos`, `/eventos`, `/contacto`, `/login`.
+   - Verificación de carga y encabezados del logotipo institucional (`/images/logo-ariq.png`).
+   - Detección de protocolo HTTPS y contexto cifrado (`window.isSecureContext`).
+   - Consultas de lectura a `institutional_settings`, `news`, `courses` y `events`.
+   - Estado de Firebase Authentication y persistencia de sesión.
+   - Estado de flujos de trabajo de GitHub Actions.
 
 3. **Script Autónomo de Verificación (`scripts/health-check.mjs`):**
    - Script Node.js ejecutable tanto en terminal local como en servidores CI/CD:
@@ -55,12 +65,12 @@ El sistema cuenta con una arquitectura de observabilidad continua de extremo a e
    - Genera resúmenes Markdown automáticos para GitHub Actions (`$GITHUB_STEP_SUMMARY`).
 
 4. **Flujos Automatizados de GitHub Actions (`.github/workflows/`):**
-   - **`health-check.yml`:** Ejecución programada cada 30 minutos (`cron: '*/30 * * * *'`) y bajo demanda (`workflow_dispatch`), inspeccionando la URL de producción sin intervención humana.
-   - **`firebase-ci-cd.yml`:** Flujo de integración y despliegue continuo que ejecuta pruebas de sintaxis (`npm run lint`), compilación (`npm run build`) y despliegue automático a Firebase Hosting ante cada push a la rama `main`.
+   - **`health-check.yml`:** Ejecución programada cada 30 minutos (`cron: '*/30 * * * *'`) y bajo demanda (`workflow_dispatch`).
+   - **`firebase-ci-cd.yml`:** Flujo de integración y despliegue continuo que ejecuta pruebas de sintaxis (`npm run lint`), compilación (`npm run build`) y despliegue automático a Firebase Hosting ante cada push a `main`.
 
 ---
 
-## 3. INTERPRETACIÓN DE ESTADOS VISUALES
+## 4. INTERPRETACIÓN DE ESTADOS VISUALES
 
 En el panel `/admin/sistema`, cada servicio e indicador muestra uno de cuatro estados unificados:
 
@@ -75,11 +85,11 @@ Cada indicador muestra además la **fecha y hora exacta** de su última comproba
 
 ---
 
-## 4. REGISTRO Y GESTIÓN DE INCIDENTES (`system_health_logs`)
+## 5. REGISTRO Y GESTIÓN DE INCIDENTES (`system_health_logs`)
 
 Los incidentes detectados de forma automática o reportados manualmente se almacenan en la colección privada de Firestore `/system_health_logs`:
 
-### 4.1 Estructura del Documento de Incidente
+### 5.1 Estructura del Documento de Incidente
 
 ```json
 {
@@ -97,49 +107,29 @@ Los incidentes detectados de forma automática o reportados manualmente se almac
 }
 ```
 
-### 4.2 Estados de un Incidente
-- **`abierto`**: Incidente recién registrado que requiere atención.
-- **`investigando`**: En proceso de diagnóstico técnico.
-- **`resuelto`**: Incidente mitigado con fecha de resolución y notas archivadas.
-
-### 4.3 Sanitización y Privacidad
-El servicio de monitoreo sanitiza automáticamente cualquier mensaje de error antes de guardarlo en Firestore, eliminando tokens, contraseñas, claves privadas y datos personales de usuarios (cumplimiento estricto de seguridad).
-
----
-
-## 5. ALERTAS CRÍTICAS POR CORREO ELECTRÓNICO (CLOUD FUNCTIONS)
-
-Para evitar la exposición de credenciales SMTP o claves privadas en el navegador del usuario, las alertas por correo se gestionan exclusivamente del lado del servidor mediante Firebase Cloud Functions:
-
-- **Archivo:** `functions/index.js`
-- **Disparador:** `onDocumentCreated('system_health_logs/{incidentId}')`
-- **Comportamiento:** Si un incidente tiene `severidad == 'critico'`, la función envía un correo con el detalle técnico del fallo a la casilla de administración (`admin@ariq.org.ar`).
-- **Configuración en Firebase:**
-  ```bash
-  firebase functions:config:set smtp.host="smtp.gmail.com" smtp.user="alertas@ariq.org.ar" smtp.password="TU_CONTRASENA_DE_APLICACION"
-  firebase deploy --only functions
-  ```
+### 5.2 Alertas Críticas por Correo (Cloud Functions)
+Las alertas por correo electrónico se ejecutan exclusivamente en el backend server-side mediante Firebase Cloud Functions (`functions/index.js`), escuchando inserciones en `system_health_logs` donde `severidad === 'critico'`, sin exponer contraseñas ni credenciales SMTP en el navegador del cliente.
 
 ---
 
 ## 6. COLECCIONES DE CLOUD FIRESTORE
 
-| Colección | Propósito en ARIQ | Reglas de Acceso |
-| :--- | :--- | :--- |
-| `institutional_settings` | Datos legales oficiales, CUIT, personerías, autoridades y canales de atención. | Lectura pública; escritura solo `admin`. |
-| `news` | Publicaciones institucionales, notas científicas, slug único y portadas. | Lectura pública si `estado == 'publicada'`; edición `admin` y `editor`. |
-| `news_categories` | Categorías temáticas (Capacitación Continua, Gremial, Bioseguridad, etc.). | Lectura pública; gestión por personal staff. |
-| `courses` | Programas de formación quirúrgica, vacantes sincronizadas y cupos. | Lectura pública; actualización transaccional de cupos. |
-| `course_registrations` | Inscripciones con DNI y matrícula. Registro transaccional seguro. | Creación pública; lectura restringida a staff (PII protegida). |
-| `events` | Congresos, jornadas rosarinas y asambleas con fechas y sedes. | Lectura pública; gestión `admin` y `editor`. |
-| `contact_messages` | Mensajes recibidos a través del formulario con notas internas. | Creación pública; lectura reservada a staff. |
-| `profiles` | Perfiles de usuario vinculados al UID de Firebase Auth. | Lectura/escritura propia o por `admin`. |
-| `internal_logs` | Auditoría inmutable de altas, bajas y modificaciones administrativas. | Solo lectura/escritura por `admin`. |
-| `system_health_logs` | Historial y estado de incidentes del sistema de monitoreo. | Lectura y actualización reservada a staff y administradores. |
+| Colección | Propósito en ARIQ | Almacenamiento de Imágenes | Reglas de Acceso |
+| :--- | :--- | :--- | :--- |
+| `institutional_settings` | Datos legales oficiales, CUIT, autoridades y canales. | `logotipo_base64` (WebP/PNG transparente <= 250 KB) | Lectura pública; escritura solo `admin`. |
+| `news` | Publicaciones y artículos científicos. | `imagen_url` (Base64) y `miniatura_base64` | Lectura pública si publicada; edición `admin`/`editor`. |
+| `news_categories` | Categorías temáticas quirúrgicas. | N/A | Lectura pública; gestión por staff. |
+| `courses` | Cursos y talleres con vacantes sincronizadas. | `imagen_url` (Base64) y `miniatura_base64` | Lectura pública; actualización transaccional de cupos. |
+| `course_registrations` | Inscripciones con DNI y matrícula. | N/A | Creación pública; lectura restringida a staff (PII). |
+| `events` | Congresos, jornadas y asambleas. | `imagen_url` (Base64) y `miniatura_base64` | Lectura pública; gestión `admin`/`editor`. |
+| `contact_messages` | Mensajes recibidos a través del formulario. | N/A | Creación pública; lectura reservada a staff. |
+| `profiles` | Perfiles de usuario vinculados al UID de Auth. | N/A | Lectura/escritura propia o por `admin`. |
+| `internal_logs` | Auditoría inmutable de altas, bajas y modificaciones. | N/A | Solo lectura/escritura por `admin`. |
+| `system_health_logs` | Registro y control de incidentes de producción. | N/A | Lectura y actualización reservada a staff y administradores. |
 
 ---
 
-## 7. DIAGNÓSTICO Y RESOLUCIÓN DE FALLOS COMUNES EN FIREBASE
+## 7. DIAGNÓSTICO Y RESOLUCIÓN DE FALLOS EN FIRESTORE
 
 ### 1. Error: `permission-denied` (Permiso Denegado en Firestore)
 - **Causa:** Las reglas de seguridad de Firestore (`firestore.rules`) no han sido desplegadas en el proyecto de Firebase Console o la colección está bloqueada.
@@ -150,10 +140,6 @@ Para evitar la exposición de credenciales SMTP o claves privadas en el navegado
 ### 2. Error: `the client is offline` / `unavailable`
 - **Causa:** La base de datos Cloud Firestore aún no ha sido inicializada en el proyecto `ariq-rosario` o no hay conexión de red.
 - **Solución:** Ingrese a la consola de Firebase, diríjase a **Firestore Database**, y si aparece el botón "Crear base de datos", créela en modo producción con base de datos `(default)`.
-
-### 3. Error en Firebase Storage: `storage/unauthorized`
-- **Causa:** Las reglas de `storage.rules` no están aplicadas en el bucket `ariq-rosario.firebasestorage.app`.
-- **Solución:** En la pestaña **Storage > Reglas**, copie el contenido de `storage.rules` y presione **Publicar**.
 
 ---
 

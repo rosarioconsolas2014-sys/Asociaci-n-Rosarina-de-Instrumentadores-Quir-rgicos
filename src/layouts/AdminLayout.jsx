@@ -18,15 +18,25 @@ import {
 } from 'lucide-react';
 import { authService } from '../services/authService.js';
 import { isFirebaseConfigured } from '../firebase/firebase.js';
+import { configuracionService } from '../services/configuracionService.js';
 
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [logoSrc, setLogoSrc] = useState('/images/logo-ariq.png');
   const navigate = useNavigate();
   const currentUser = authService.getCurrentUser() || {
     full_name: 'Usuario Administrador',
     role: 'admin',
     email: 'admin@ariq.org.ar',
   };
+
+  React.useEffect(() => {
+    configuracionService.getConfiguracion().then((cfg) => {
+      if (cfg?.logotipo_base64) {
+        setLogoSrc(cfg.logotipo_base64);
+      }
+    });
+  }, []);
 
   const handleLogout = async () => {
     await authService.logout();
@@ -108,7 +118,7 @@ export default function AdminLayout() {
       <div className="lg:hidden bg-stone-900 text-white px-4 py-3 flex items-center justify-between border-b border-stone-800">
         <div className="flex items-center gap-2.5">
           <img
-            src="/images/logo-ariq.png"
+            src={logoSrc}
             alt="ARIQ"
             className="w-8 h-8 rounded-full bg-white p-0.5 object-contain"
             referrerPolicy="no-referrer"
@@ -143,7 +153,7 @@ export default function AdminLayout() {
           <div className="p-6 border-b border-stone-800">
             <div className="flex items-center gap-3">
               <img
-                src="/images/logo-ariq.png"
+                src={logoSrc}
                 alt="ARIQ"
                 className="w-10 h-10 rounded-full bg-white p-0.5 object-contain shrink-0"
                 referrerPolicy="no-referrer"

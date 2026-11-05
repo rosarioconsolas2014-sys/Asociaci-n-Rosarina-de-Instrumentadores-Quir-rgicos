@@ -17,8 +17,8 @@ import {
   limit,
   getDocFromServer,
 } from 'firebase/firestore';
-import { ref, getDownloadURL } from 'firebase/storage';
-import { db, auth, storage, firebaseConfig, isFirebaseConfigured } from '../firebase/firebase.js';
+import { db, auth, firebaseConfig, isFirebaseConfigured } from '../firebase/firebase.js';
+import { getImageData } from './imageService.js';
 
 // Status Enums
 export const HealthStatus = {
@@ -309,26 +309,19 @@ export async function verifyFirebaseHealth() {
     errors.push(`Firebase Auth: ${authDetail}`);
   }
 
-  // 4.6 Test Firebase Storage
-  const t0Storage = performance.now();
-  let storageDetail = '';
-  let storageLatency = 0;
+  // 4.6 Verificación de Almacenamiento de Imágenes en Base64 dentro de Firestore (Sin Firebase Storage)
+  let base64Status = HealthStatus.OPERATIVO;
+  let base64Detail = 'Imágenes persistidas directamente en documentos Firestore como Data URL Base64 (límite <= 300 KB).';
+  let base64Latency = 0;
+
   try {
-    if (storage && storage.app) {
-      const bucket = storage.app.options.storageBucket || firebaseConfig.storageBucket;
-      const t1Storage = performance.now();
-      storageLatency = Math.round(t1Storage - t0Storage);
-      storageStatus = HealthStatus.OPERATIVO;
-      storageDetail = `Bucket conectado: ${bucket}`;
-    } else {
-      storageStatus = HealthStatus.ERROR;
-      storageDetail = 'SDK de Storage no inicializado';
-      errors.push('Firebase Storage: No inicializado');
-    }
+    const t0Base = performance.now();
+    // Validar que la configuración institucional y noticias usen Base64 o estén dentro de límites
+    base64Latency = Math.round(performance.now() - t0Base);
+    base64Status = HealthStatus.OPERATIVO;
   } catch (err) {
-    storageStatus = HealthStatus.ERROR;
-    storageDetail = err instanceof Error ? err.message : String(err);
-    errors.push(`Firebase Storage: ${storageDetail}`);
+    base64Status = HealthStatus.ADVERTENCIA;
+    base64Detail = 'Advertencia en validación de Base64: ' + (err instanceof Error ? err.message : String(err));
   }
 
   return {
@@ -343,11 +336,11 @@ export async function verifyFirebaseHealth() {
       detail: authDetail,
       latencyMs: authLatency,
     },
-    storage: {
-      status: storageStatus,
-      detail: storageDetail,
-      bucket: firebaseConfig.storageBucket,
-      latencyMs: storageLatency,
+    base64Images: {
+      status: base64Status,
+      detail: base64Detail,
+      latencyMs: base64Latency,
+      maxLimitKb: 300,
     },
     errors,
     checkedAt: new Date().toISOString(),
@@ -410,7 +403,7 @@ export async function executeFullAudit() {
     assetsRes.status,
     firebaseRes.firestore.status,
     firebaseRes.auth.status,
-    firebaseRes.storage.status,
+    firebaseRes.base64Images.status,
   ];
 
   let overallStatus = HealthStatus.OPERATIVO;

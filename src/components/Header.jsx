@@ -1,12 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Lock, User, LogOut } from 'lucide-react';
 import { authService } from '../services/authService.js';
+import { configuracionService } from '../services/configuracionService.js';
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [logoSrc, setLogoSrc] = useState('/images/logo-ariq.png');
   const location = useLocation();
   const currentUser = authService.getCurrentUser();
+
+  useEffect(() => {
+    configuracionService.getConfiguracion().then((cfg) => {
+      if (cfg?.logotipo_base64) {
+        setLogoSrc(cfg.logotipo_base64);
+      }
+    });
+  }, []);
 
   const navLinks = [
     { label: 'Inicio', path: '/' },
@@ -32,7 +42,7 @@ export default function Header() {
           className="flex items-center gap-3.5 whitespace-nowrap shrink-0 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 rounded-lg py-1"
         >
           <img
-            src="/images/logo-ariq.png"
+            src={logoSrc}
             alt="Logotipo ARIQ"
             className="w-12 h-12 object-contain shrink-0 rounded-full"
             referrerPolicy="no-referrer"

@@ -16,7 +16,7 @@ import Button from '../components/Button.jsx';
 import Modal from '../components/Modal.jsx';
 import { cursosService } from '../services/cursosService.js';
 import { slugify } from '../services/noticiasService.js';
-import { uploadFileToStorage, STORAGE_FOLDERS } from '../firebase/storage.js';
+import { prepareImageForFirestore, getImageData } from '../services/imageService.js';
 
 export default function AdminCursos() {
   const [cursos, setCursos] = useState([]);
@@ -30,6 +30,7 @@ export default function AdminCursos() {
     slug: '',
     descripcion: '',
     imagen_url: '/images/curso-laparoscopia.jpg',
+    miniatura_base64: '',
     modalidad: 'presencial',
     lugar: 'Sede ARIQ - Rosario',
     fecha_inicio: '',
@@ -56,14 +57,22 @@ export default function AdminCursos() {
     setUploadProgress(0);
     setFormError(null);
     try {
-      const result = await uploadFileToStorage(file, STORAGE_FOLDERS.COURSES, (p) => {
-        setUploadProgress(p);
+      setUploadProgress(35);
+      const prepared = await prepareImageForFirestore(file, {
+        maxDimension: 1200,
+        maxSizeKb: 300,
       });
-      setFormData((prev) => ({ ...prev, imagen_url: result.downloadUrl }));
+      setUploadProgress(85);
+      setFormData((prev) => ({
+        ...prev,
+        imagen_url: prepared.base64,
+        miniatura_base64: prepared.miniaturaBase64,
+      }));
+      setUploadProgress(100);
     } catch (err) {
-      setFormError(err.message || 'Error al subir imagen a Firebase Storage.');
+      setFormError(err.message || 'Error al comprimir y convertir la imagen a Base64.');
     } finally {
-      setUploading(false);
+      setTimeout(() => setUploading(false), 200);
     }
   };
 
@@ -470,28 +479,35 @@ export default function AdminCursos() {
                 </select>
               </div>
 
-              {/* Upload to Firebase Storage */}
-              <div className="flex items-center gap-3 bg-stone-50 p-2.5 rounded-lg border border-stone-200">
-                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-white border border-stone-300 rounded-md hover:bg-stone-100 cursor-pointer shadow-2xs">
-                  <Upload className="w-3.5 h-3.5 text-red-600" />
-                  <span>{uploading ? `Subiendo (${uploadProgress}%)...` : 'Subir a Firebase Storage'}</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    disabled={uploading}
-                    className="hidden"
-                  />
-                </label>
+              {/* Upload & Convert to Base64 for Firestore */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-stone-50 p-2.5 rounded-lg border border-stone-200">
+                <div className="flex items-center gap-2">
+                  <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-white border border-stone-300 rounded-md hover:bg-stone-100 cursor-pointer shadow-2xs">
+                    <Upload className="w-3.5 h-3.5 text-red-600" />
+                    <span>{uploading ? `Comprimiendo (${uploadProgress}%)...` : 'Seleccionar Imagen (Base64)'}</span>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={handleFileUpload}
+                      disabled={uploading}
+                      className="hidden"
+                    />
+                  </label>
+                  <span className="text-[10px] text-stone-400">Máx 300 KB post-compresión</span>
+                </div>
+
                 {formData.imagen_url && (
-                  <div className="flex items-center gap-2 text-[11px] text-stone-500 truncate">
+                  <div className="flex items-center gap-2 text-[11px] text-stone-600 truncate">
                     <img
                       src={formData.imagen_url}
                       alt="Vista previa"
-                      className="w-8 h-8 rounded object-cover border border-stone-200"
-                      referrerPolicy="no-referrer"
+                      className="w-8 h-8 rounded object-cover border border-stone-200 shrink-0 bg-white"
                     />
-                    <span className="truncate max-w-xs">{formData.imagen_url}</span>
+                    <span className="text-[10px] text-emerald-700 font-semibold">
+                      {formData.imagen_url.startsWith('data:')
+                        ? `Base64 (${getImageData(formData.imagen_url).sizeKb} KB - WebP)`
+                        : 'Imagen Preset'}
+                    </span>
                   </div>
                 )}
               </div>

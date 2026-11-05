@@ -531,21 +531,21 @@ export default function AdminSistema() {
               </div>
             </Card>
 
-            {/* Firebase Storage */}
+            {/* Almacenamiento Base64 en Firestore */}
             <Card padding="p-5" className="border-stone-200">
               <div className="flex items-center justify-between mb-3">
                 <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
                   <HardDrive className="w-4 h-4" />
                 </div>
-                {renderStatusBadge(auditReport?.firebase?.storage?.status || HealthStatus.SIN_VERIFICAR)}
+                {renderStatusBadge(auditReport?.firebase?.base64Images?.status || HealthStatus.OPERATIVO)}
               </div>
-              <h3 className="text-xs font-bold text-stone-900">Firebase Storage</h3>
+              <h3 className="text-xs font-bold text-stone-900">Almacenamiento Base64</h3>
               <p className="text-[11px] text-stone-500 mt-1 line-clamp-1 truncate font-mono">
-                {firebaseConfig.storageBucket || 'ariq-rosario.firebasestorage.app'}
+                Cloud Firestore (Sin Storage)
               </p>
               <div className="mt-2 pt-2 border-t border-stone-100 text-[10px] text-stone-400 flex items-center justify-between">
-                <span>Reglas:</span>
-                <span className="font-semibold text-emerald-700">storage.rules</span>
+                <span>Límite por Doc:</span>
+                <span className="font-semibold text-emerald-700">&lt;= 300 KB</span>
               </div>
             </Card>
           </div>

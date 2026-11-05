@@ -1,10 +1,9 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
 import firebaseConfigJson from '../../firebase-applet-config.json';
 
-// Use configuration from json or environment variables
+// Use configuration from json or environment variables (Auth & Firestore only)
 export const firebaseConfig = {
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseConfigJson.projectId,
   appId: import.meta.env.VITE_FIREBASE_APP_ID || firebaseConfigJson.appId,
@@ -14,8 +13,6 @@ export const firebaseConfig = {
     import.meta.env.VITE_FIREBASE_DATABASE_ID ||
     firebaseConfigJson.firestoreDatabaseId ||
     '(default)',
-  storageBucket:
-    import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfigJson.storageBucket,
   messagingSenderId:
     import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfigJson.messagingSenderId,
 };
@@ -23,16 +20,15 @@ export const firebaseConfig = {
 // Initialize Firebase app singleton
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize services
+// Initialize services (Firebase Authentication & Cloud Firestore exclusively)
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
 // Critical: Pass firestoreDatabaseId if custom database ID is configured
-export const db = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
-  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-  : getFirestore(app);
-
-export const storage = getStorage(app);
+export const db =
+  firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
+    ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+    : getFirestore(app);
 
 // Check if Firebase has active valid configuration
 export const isFirebaseConfigured = Boolean(
@@ -64,4 +60,3 @@ export async function testFirestoreConnection() {
     return { ok: true, message: `Conectado al servidor de Firestore (${firebaseConfig.projectId}).` };
   }
 }
-

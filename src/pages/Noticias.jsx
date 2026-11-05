@@ -133,9 +133,10 @@ export default function Noticias() {
                   <div>
                     <div className="aspect-[16/10] bg-stone-100 overflow-hidden relative">
                       <img
-                        src={item.imagen_url || '/images/hero-suite.jpg'}
+                        src={item.miniatura_base64 || item.imagen_url || '/images/hero-suite.jpg'}
                         alt={item.titulo}
                         className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                        loading="lazy"
                         referrerPolicy="no-referrer"
                       />
                     </div>

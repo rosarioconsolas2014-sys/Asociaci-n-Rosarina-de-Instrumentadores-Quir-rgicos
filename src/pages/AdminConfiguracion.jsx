@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Save, CheckCircle2, Shield } from 'lucide-react';
+import { Settings, Save, CheckCircle2, Shield, Upload, Image as ImageIcon } from 'lucide-react';
 import Card from '../components/Card.jsx';
 import Button from '../components/Button.jsx';
 import { configuracionService } from '../services/configuracionService.js';
+import { prepareImageForFirestore, getImageData } from '../services/imageService.js';
 
 export default function AdminConfiguracion() {
   const [config, setConfig] = useState({
@@ -11,6 +12,7 @@ export default function AdminConfiguracion() {
     lema: 'Jerarquizando el ejercicio profesional y la seguridad del paciente quirúrgico',
     personeria_juridica: 'Resolución I.G.P.J. N° 412/1988',
     cuit: '30-65487219-4',
+    logotipo_base64: '',
     sede: {
       ciudad: 'Rosario',
       provincia: 'Santa Fe',
@@ -33,6 +35,30 @@ export default function AdminConfiguracion() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError] = useState(null);
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoUploading(true);
+    setLogoError(null);
+    try {
+      const prepared = await prepareImageForFirestore(file, {
+        maxDimension: 600,
+        maxSizeKb: 250,
+        keepTransparency: true,
+      });
+      setConfig((prev) => ({
+        ...prev,
+        logotipo_base64: prepared.base64,
+      }));
+    } catch (err) {
+      setLogoError(err.message || 'Error al procesar el logotipo en Base64.');
+    } finally {
+      setLogoUploading(false);
+    }
+  };
 
   useEffect(() => {
     configuracionService.getConfiguracion().then((data) => {
@@ -78,6 +104,54 @@ export default function AdminConfiguracion() {
       )}
 
       <form onSubmit={handleSave} className="space-y-6">
+        {/* Logotipo Institucional en Base64 */}
+        <Card padding="p-6">
+          <h3 className="text-sm font-bold text-stone-900 mb-4 pb-2 border-b border-stone-100 flex items-center gap-2">
+            <ImageIcon className="w-4 h-4 text-red-600" />
+            <span>Logotipo Oficial ARIQ (Base64 en Firestore)</span>
+          </h3>
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+            <div className="relative w-24 h-24 rounded-full border-2 border-red-200 bg-white p-1 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+              <img
+                src={config.logotipo_base64 || '/images/logo-ariq.png'}
+                alt="Logotipo ARIQ"
+                className="w-full h-full object-contain rounded-full"
+              />
+            </div>
+
+            <div className="space-y-2 flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-white border border-stone-300 rounded-md hover:bg-stone-100 cursor-pointer shadow-2xs">
+                  <Upload className="w-3.5 h-3.5 text-red-600" />
+                  <span>{logoUploading ? 'Procesando Base64...' : 'Actualizar Logotipo (PNG / WebP)'}</span>
+                  <input
+                    type="file"
+                    accept="image/png,image/webp,image/jpeg"
+                    onChange={handleLogoUpload}
+                    disabled={logoUploading}
+                    className="hidden"
+                  />
+                </label>
+
+                {config.logotipo_base64 && (
+                  <span className="text-[10px] text-emerald-700 font-semibold px-2 py-0.5 bg-emerald-50 rounded border border-emerald-200">
+                    Base64 ({getImageData(config.logotipo_base64).sizeKb} KB)
+                  </span>
+                )}
+              </div>
+
+              <p className="text-[11px] text-stone-500">
+                Se recomienda formato PNG con fondo transparente o WebP. Se comprime automáticamente a menos de 250 KB y se almacena en el documento central `institutional_settings/ariq_main` de Firestore sin usar Firebase Storage.
+              </p>
+
+              {logoError && (
+                <p className="text-[11px] text-rose-600 font-medium">{logoError}</p>
+              )}
+            </div>
+          </div>
+        </Card>
+
         {/* Identidad Legal */}
         <Card padding="p-6">
           <h3 className="text-sm font-bold text-stone-900 mb-4 pb-2 border-b border-stone-100 flex items-center gap-2">
