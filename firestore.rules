@@ -1,0 +1,171 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default Deny Catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // HELPER FUNCTIONS & GUARDS
+    // =========================================================================
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Read user role from profiles collection or developer bootstrap email
+    function getUserRole() {
+      return isSignedIn()
+        ? (request.auth.token.email == 'rosarioconsolas2014@gmail.com'
+            ? 'admin'
+            : get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role)
+        : null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'rosarioconsolas2014@gmail.com' ||
+        get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    function isEditor() {
+      return isSignedIn() && (
+        isAdmin() ||
+        get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'editor'
+      );
+    }
+
+    function isStaff() {
+      return isSignedIn() && (
+        isAdmin() ||
+        get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role in ['admin', 'editor', 'operador']
+      );
+    }
+
+    // =========================================================================
+    // 1. INSTITUTIONAL SETTINGS
+    // =========================================================================
+    match /institutional_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidId(settingId);
+    }
+
+    // =========================================================================
+    // 2. NEWS CATEGORIES
+    // =========================================================================
+    match /news_categories/{categoryId} {
+      allow read: if true;
+      allow write: if isEditor() && isValidId(categoryId);
+    }
+
+    // =========================================================================
+    // 3. NEWS ARTICLES
+    // =========================================================================
+    match /news/{newsId} {
+      allow get: if resource.data.estado == 'publicada' || isStaff();
+      allow list: if (resource.data.estado == 'publicada' && (!isSignedIn() || !isStaff())) || isStaff();
+      allow create: if isEditor() && isValidId(newsId) &&
+        incoming().titulo is string && incoming().titulo.size() <= 300 &&
+        incoming().slug is string && incoming().slug.size() <= 200 &&
+        incoming().resumen is string && incoming().resumen.size() <= 2000 &&
+        incoming().estado in ['borrador', 'publicada'];
+      allow update: if isEditor() && isValidId(newsId) &&
+        incoming().titulo is string && incoming().titulo.size() <= 300 &&
+        incoming().estado in ['borrador', 'publicada'];
+      allow delete: if isEditor() && isValidId(newsId);
+    }
+
+    // =========================================================================
+    // 4. COURSES & WORKSHOPS
+    // =========================================================================
+    match /courses/{courseId} {
+      allow read: if true;
+      allow create, delete: if isEditor() && isValidId(courseId);
+      allow update: if isValidId(courseId) && (
+        isEditor() ||
+        // Allow public registration transaction to decrement vacantes
+        (incoming().diff(existing()).affectedKeys().hasOnly(['vacantes_disponibles', 'cupos_disponibles', 'updated_at']) &&
+         incoming().vacantes_disponibles >= 0)
+      );
+    }
+
+    // =========================================================================
+    // 5. COURSE REGISTRATIONS (PII Protected)
+    // =========================================================================
+    match /course_registrations/{registrationId} {
+      // Only staff can view registrations; never public
+      allow read, list: if isStaff();
+      // Public applicant registration insertion
+      allow create: if isValidId(registrationId) &&
+        incoming().curso_id is string && incoming().curso_id.size() <= 128 &&
+        incoming().nombre_completo is string && incoming().nombre_completo.size() <= 200 &&
+        incoming().email is string && incoming().email.size() <= 200 &&
+        incoming().dni is string && incoming().dni.size() <= 50 &&
+        incoming().estado == 'pendiente';
+      allow update: if isStaff() && isValidId(registrationId);
+      allow delete: if isAdmin() && isValidId(registrationId);
+    }
+
+    // =========================================================================
+    // 6. EVENTS & CONGRESSES
+    // =========================================================================
+    match /events/{eventId} {
+      allow get: if resource.data.estado == 'publicado' || isStaff();
+      allow list: if (resource.data.estado == 'publicado' && (!isSignedIn() || !isStaff())) || isStaff();
+      allow write: if isEditor() && isValidId(eventId);
+    }
+
+    // =========================================================================
+    // 7. CONTACT INQUIRIES
+    // =========================================================================
+    match /contact_messages/{messageId} {
+      // Inquiries are private to staff
+      allow read, list: if isStaff();
+      allow create: if isValidId(messageId) &&
+        incoming().nombre is string && incoming().nombre.size() <= 200 &&
+        incoming().email is string && incoming().email.size() <= 200 &&
+        incoming().mensaje is string && incoming().mensaje.size() <= 5000;
+      allow update: if isStaff() && isValidId(messageId);
+      allow delete: if isAdmin() && isValidId(messageId);
+    }
+
+    // =========================================================================
+    // 8. USER PROFILES & ROLES
+    // =========================================================================
+    match /profiles/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      // Self registration sets default role or developer admin
+      allow create: if isSignedIn() && request.auth.uid == userId && (
+        incoming().role in ['operador'] ||
+        request.auth.token.email == 'rosarioconsolas2014@gmail.com'
+      );
+      // Privilege modification strictly restricted to admin
+      allow update, delete: if isAdmin() && isValidId(userId);
+    }
+
+    // =========================================================================
+    // 9. INTERNAL AUDIT LOGS
+    // =========================================================================
+    match /internal_logs/{logId} {
+      allow read, list: if isAdmin();
+      allow create: if isStaff() && isValidId(logId);
+      allow update, delete: if false; // Immutable audit trail
+    }
+
+  }
+}

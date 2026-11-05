@@ -9,12 +9,14 @@ import {
   Calendar,
   AlertTriangle,
   CheckCircle,
+  Upload,
 } from 'lucide-react';
 import DataTable from '../components/DataTable.jsx';
 import Button from '../components/Button.jsx';
 import Modal from '../components/Modal.jsx';
 import { cursosService } from '../services/cursosService.js';
 import { slugify } from '../services/noticiasService.js';
+import { uploadFileToStorage, STORAGE_FOLDERS } from '../firebase/storage.js';
 
 export default function AdminCursos() {
   const [cursos, setCursos] = useState([]);
@@ -44,6 +46,26 @@ export default function AdminCursos() {
   });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadProgress(0);
+    setFormError(null);
+    try {
+      const result = await uploadFileToStorage(file, STORAGE_FOLDERS.COURSES, (p) => {
+        setUploadProgress(p);
+      });
+      setFormData((prev) => ({ ...prev, imagen_url: result.downloadUrl }));
+    } catch (err) {
+      setFormError(err.message || 'Error al subir imagen a Firebase Storage.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   // Delete Modal
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -424,26 +446,55 @@ export default function AdminCursos() {
 
           <div>
             <label className="block text-xs font-semibold text-stone-700 mb-1">
-              Imagen del Curso (URL o Preset)
+              Imagen de Portada del Curso (Firebase Storage o URL)
             </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={formData.imagen_url}
-                onChange={(e) => setFormData({ ...formData, imagen_url: e.target.value })}
-                className="w-full px-3 py-2 text-xs border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600"
-              />
-              <select
-                onChange={(e) => {
-                  if (e.target.value) setFormData({ ...formData, imagen_url: e.target.value });
-                }}
-                className="text-xs border border-stone-300 rounded-lg px-2 py-2 bg-stone-50"
-              >
-                <option value="">Presets...</option>
-                <option value="/images/curso-laparoscopia.jpg">Laparoscopía</option>
-                <option value="/images/curso-esterilizacion.jpg">Esterilización</option>
-                <option value="/images/hero-suite.jpg">Quirófano</option>
-              </select>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={formData.imagen_url}
+                  onChange={(e) => setFormData({ ...formData, imagen_url: e.target.value })}
+                  placeholder="URL o suba una imagen"
+                  className="w-full px-3 py-2 text-xs border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600"
+                />
+                <select
+                  onChange={(e) => {
+                    if (e.target.value) setFormData({ ...formData, imagen_url: e.target.value });
+                  }}
+                  className="text-xs border border-stone-300 rounded-lg px-2 py-2 bg-stone-50 shrink-0"
+                >
+                  <option value="">Presets...</option>
+                  <option value="/images/curso-laparoscopia.jpg">Laparoscopía</option>
+                  <option value="/images/curso-esterilizacion.jpg">Esterilización</option>
+                  <option value="/images/hero-suite.jpg">Quirófano</option>
+                </select>
+              </div>
+
+              {/* Upload to Firebase Storage */}
+              <div className="flex items-center gap-3 bg-stone-50 p-2.5 rounded-lg border border-stone-200">
+                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-white border border-stone-300 rounded-md hover:bg-stone-100 cursor-pointer shadow-2xs">
+                  <Upload className="w-3.5 h-3.5 text-red-600" />
+                  <span>{uploading ? `Subiendo (${uploadProgress}%)...` : 'Subir a Firebase Storage'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    disabled={uploading}
+                    className="hidden"
+                  />
+                </label>
+                {formData.imagen_url && (
+                  <div className="flex items-center gap-2 text-[11px] text-stone-500 truncate">
+                    <img
+                      src={formData.imagen_url}
+                      alt="Vista previa"
+                      className="w-8 h-8 rounded object-cover border border-stone-200"
+                      referrerPolicy="no-referrer"
+                    />
+                    <span className="truncate max-w-xs">{formData.imagen_url}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

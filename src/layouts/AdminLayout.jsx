@@ -17,7 +17,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { authService } from '../services/authService.js';
-import { isSupabaseConfigured } from '../services/supabase.js';
+import { isFirebaseConfigured } from '../firebase/firebase.js';
 
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -79,7 +79,7 @@ export default function AdminLayout() {
     },
     {
       to: '/admin/sistema',
-      label: 'Supabase & Seguridad',
+      label: 'Firebase & Seguridad',
       icon: Database,
       roles: ['admin'],
     },
@@ -156,17 +156,17 @@ export default function AdminLayout() {
               </div>
             </div>
 
-            {/* Supabase connection indicator */}
+            {/* Firebase connection indicator */}
             <div className="mt-4 pt-3 border-t border-stone-800/80 flex items-center justify-between text-[11px]">
               <span className="text-stone-400">Motor de Datos:</span>
               <span
                 className={`font-semibold px-2 py-0.5 rounded text-[10px] ${
-                  isSupabaseConfigured
+                  isFirebaseConfigured
                     ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
                     : 'bg-stone-800 text-amber-300 border border-stone-700'
                 }`}
               >
-                {isSupabaseConfigured ? 'Supabase Conectado' : 'Modo Demostración'}
+                {isFirebaseConfigured ? 'Firebase Conectado' : 'Modo Demostración'}
               </span>
             </div>
           </div>

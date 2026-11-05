@@ -1,29 +1,53 @@
-import { supabase, isSupabaseConfigured, getLocalStore, setLocalStore, initLocalStore } from './supabase.js';
+import {
+  listDocuments,
+  getDocument,
+  createDocument,
+  updateDocument,
+  deleteDocument,
+  logInternalActivity,
+} from '../firebase/firestore.js';
+import { isFirebaseConfigured, db } from '../firebase/firebase.js';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { slugify } from './noticiasService.js';
+import { getLocalStore, setLocalStore, initLocalStore } from './supabase.js';
 
 initLocalStore();
 
 export const eventosService = {
   async getEventos({ soloPublicados = false, tipo = '', search = '' } = {}) {
-    if (isSupabaseConfigured && supabase) {
-      let query = supabase
-        .from('eventos')
-        .select('*')
-        .order('fecha', { ascending: false });
+    if (isFirebaseConfigured) {
+      try {
+        const colRef = collection(db, 'events');
+        let q;
+        if (soloPublicados) {
+          q = query(colRef, where('estado', '==', 'publicado'), orderBy('fecha', 'desc'));
+        } else {
+          q = query(colRef, orderBy('fecha', 'desc'));
+        }
 
-      if (soloPublicados) {
-        query = query.eq('estado', 'publicado');
-      }
-      if (tipo) {
-        query = query.eq('tipo', tipo);
-      }
-      if (search) {
-        query = query.or(`titulo.ilike.%${search}%,descripcion.ilike.%${search}%,lugar.ilike.%${search}%`);
-      }
+        const snap = await getDocs(q);
+        let items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
+        if (tipo) {
+          items = items.filter((e) => e.tipo === tipo);
+        }
+        if (search) {
+          const qStr = search.toLowerCase();
+          items = items.filter(
+            (e) =>
+              e.titulo?.toLowerCase().includes(qStr) ||
+              e.descripcion?.toLowerCase().includes(qStr) ||
+              e.lugar?.toLowerCase().includes(qStr) ||
+              e.ubicacion?.toLowerCase().includes(qStr)
+          );
+        }
+
+        if (items.length > 0) {
+          return items;
+        }
+      } catch (err) {
+        console.warn('Error al cargar eventos de Firestore, usando caché local:', err);
+      }
     }
 
     let items = getLocalStore('EVENTOS', []);
@@ -48,14 +72,13 @@ export const eventosService = {
   },
 
   async getEventoById(id) {
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('eventos')
-        .select('*')
-        .eq('id', id)
-        .single();
-      if (error) throw error;
-      return data;
+    if (isFirebaseConfigured) {
+      try {
+        const data = await getDocument('events', id);
+        if (data) return data;
+      } catch (err) {
+        console.warn('Error al obtener evento de Firestore:', err);
+      }
     }
     const items = getLocalStore('EVENTOS', []);
     return items.find((e) => e.id === id) || null;
@@ -63,22 +86,21 @@ export const eventosService = {
 
   async createEvento(evento) {
     const slug = evento.slug?.trim() ? slugify(evento.slug) : slugify(evento.titulo);
+    const today = new Date().toISOString().split('T')[0];
     const newRecord = {
       ...evento,
       slug,
       ciudad: evento.ciudad || 'Rosario, Santa Fe',
+      ubicacion: evento.ubicacion || evento.lugar || 'Rosario, Santa Fe',
+      clasificacion: evento.fecha >= today ? 'proximo' : 'historico',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('eventos')
-        .insert([newRecord])
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+    if (isFirebaseConfigured) {
+      const created = await createDocument('events', newRecord);
+      await logInternalActivity('CREATE_EVENT', 'events', created.id, `Evento creado: ${newRecord.titulo}`);
+      return created;
     }
 
     const items = getLocalStore('EVENTOS', []);
@@ -93,21 +115,19 @@ export const eventosService = {
 
   async updateEvento(id, evento) {
     const slug = evento.slug?.trim() ? slugify(evento.slug) : slugify(evento.titulo);
+    const today = new Date().toISOString().split('T')[0];
     const updatedData = {
       ...evento,
       slug,
+      ubicacion: evento.ubicacion || evento.lugar || 'Rosario, Santa Fe',
+      clasificacion: evento.fecha >= today ? 'proximo' : 'historico',
       updated_at: new Date().toISOString(),
     };
 
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('eventos')
-        .update(updatedData)
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+    if (isFirebaseConfigured) {
+      const updated = await updateDocument('events', id, updatedData);
+      await logInternalActivity('UPDATE_EVENT', 'events', id, `Evento actualizado: ${evento.titulo || id}`);
+      return updated;
     }
 
     const items = getLocalStore('EVENTOS', []);
@@ -120,9 +140,9 @@ export const eventosService = {
   },
 
   async deleteEvento(id) {
-    if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.from('eventos').delete().eq('id', id);
-      if (error) throw error;
+    if (isFirebaseConfigured) {
+      await deleteDocument('events', id);
+      await logInternalActivity('DELETE_EVENT', 'events', id, `Evento eliminado id: ${id}`);
       return true;
     }
 

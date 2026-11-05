@@ -1,0 +1,228 @@
+{
+  "entities": {
+    "InstitutionalSettings": {
+      "title": "InstitutionalSettings",
+      "description": "General settings, legal and contact info of ARIQ",
+      "type": "object",
+      "properties": {
+        "nombre_institucional": { "type": "string" },
+        "nombre_legal_completo": { "type": "string" },
+        "sigla": { "type": "string" },
+        "cuit": { "type": "string" },
+        "personeria_juridica": { "type": "string" },
+        "resolucion_igpj": { "type": "string" },
+        "direccion": { "type": "string" },
+        "ciudad": { "type": "string" },
+        "provincia": { "type": "string" },
+        "telefono": { "type": "string" },
+        "email": { "type": "string" },
+        "email_cursos": { "type": "string" },
+        "horario_atencion": { "type": "string" },
+        "mision": { "type": "string" },
+        "vision": { "type": "string" },
+        "valores": { "type": "string" },
+        "redes_sociales": { "type": "object" },
+        "updated_at": { "type": "string" },
+        "updated_by": { "type": "string" }
+      },
+      "required": ["nombre_legal_completo", "sigla"]
+    },
+    "NewsCategory": {
+      "title": "NewsCategory",
+      "description": "Category for news articles",
+      "type": "object",
+      "properties": {
+        "nombre": { "type": "string" },
+        "slug": { "type": "string" },
+        "descripcion": { "type": "string" },
+        "color": { "type": "string" },
+        "orden": { "type": "number" }
+      },
+      "required": ["nombre", "slug"]
+    },
+    "NewsArticle": {
+      "title": "NewsArticle",
+      "description": "Institutional news and scientific articles",
+      "type": "object",
+      "properties": {
+        "titulo": { "type": "string" },
+        "slug": { "type": "string" },
+        "resumen": { "type": "string" },
+        "contenido": { "type": "string" },
+        "imagen_url": { "type": "string" },
+        "categoria_id": { "type": "string" },
+        "categoria_nombre": { "type": "string" },
+        "autor": { "type": "string" },
+        "fecha_publicacion": { "type": "string" },
+        "estado": { "type": "string", "enum": ["borrador", "publicada"] },
+        "destacada": { "type": "boolean" },
+        "seo_title": { "type": "string" },
+        "seo_description": { "type": "string" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["titulo", "slug", "resumen", "contenido", "estado"]
+    },
+    "Course": {
+      "title": "Course",
+      "description": "Academic course or training program",
+      "type": "object",
+      "properties": {
+        "nombre": { "type": "string" },
+        "slug": { "type": "string" },
+        "descripcion": { "type": "string" },
+        "imagen_url": { "type": "string" },
+        "modalidad": { "type": "string", "enum": ["presencial", "virtual", "hibrida"] },
+        "lugar": { "type": "string" },
+        "fecha_inicio": { "type": "string" },
+        "fecha_fin": { "type": "string" },
+        "horario": { "type": "string" },
+        "duracion_horas": { "type": "number" },
+        "cupo_total": { "type": "number" },
+        "vacantes_disponibles": { "type": "number" },
+        "arancel": { "type": "string" },
+        "requisitos": { "type": "string" },
+        "programa": { "type": "string" },
+        "docentes": { "type": "string" },
+        "estado": { "type": "string", "enum": ["activo", "proximamente", "finalizado", "cerrado"] },
+        "destacado": { "type": "boolean" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["nombre", "slug", "descripcion", "fecha_inicio", "modalidad", "cupo_total"]
+    },
+    "CourseRegistration": {
+      "title": "CourseRegistration",
+      "description": "Applicant registration for a course",
+      "type": "object",
+      "properties": {
+        "curso_id": { "type": "string" },
+        "curso_nombre": { "type": "string" },
+        "nombre_completo": { "type": "string" },
+        "email": { "type": "string" },
+        "telefono": { "type": "string" },
+        "dni": { "type": "string" },
+        "matricula": { "type": "string" },
+        "institucion_laboral": { "type": "string" },
+        "es_socio_ariq": { "type": "boolean" },
+        "comentarios": { "type": "string" },
+        "estado": { "type": "string", "enum": ["pendiente", "confirmada", "rechazada", "cancelada"] },
+        "observaciones_admin": { "type": "string" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["curso_id", "nombre_completo", "email", "dni"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "Institutional and scientific event",
+      "type": "object",
+      "properties": {
+        "titulo": { "type": "string" },
+        "slug": { "type": "string" },
+        "descripcion": { "type": "string" },
+        "imagen_url": { "type": "string" },
+        "tipo": { "type": "string", "enum": ["jornada", "congreso", "taller", "asamblea", "institucional"] },
+        "fecha": { "type": "string" },
+        "horario": { "type": "string" },
+        "ubicacion": { "type": "string" },
+        "direccion": { "type": "string" },
+        "ciudad": { "type": "string" },
+        "estado": { "type": "string", "enum": ["publicado", "borrador", "finalizado"] },
+        "enlace_inscripcion": { "type": "string" },
+        "clasificacion": { "type": "string", "enum": ["proximo", "historico"] },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["titulo", "slug", "tipo", "fecha", "horario", "ubicacion"]
+    },
+    "ContactMessage": {
+      "title": "ContactMessage",
+      "description": "Inquiry message received through contact form",
+      "type": "object",
+      "properties": {
+        "nombre": { "type": "string" },
+        "email": { "type": "string" },
+        "telefono": { "type": "string" },
+        "motivo": { "type": "string" },
+        "mensaje": { "type": "string" },
+        "leido": { "type": "boolean" },
+        "respondido": { "type": "boolean" },
+        "notas_internas": { "type": "string" },
+        "responsable": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["nombre", "email", "motivo", "mensaje"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Administrative user profile",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "full_name": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "editor", "operador"] },
+        "cargo": { "type": "string" },
+        "activo": { "type": "boolean" },
+        "created_at": { "type": "string" },
+        "last_login": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "InternalLog": {
+      "title": "InternalLog",
+      "description": "Audit log for administrative operations",
+      "type": "object",
+      "properties": {
+        "usuario_email": { "type": "string" },
+        "usuario_uid": { "type": "string" },
+        "usuario_rol": { "type": "string" },
+        "accion": { "type": "string" },
+        "modulo": { "type": "string" },
+        "registro_id": { "type": "string" },
+        "detalles": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["usuario_email", "accion", "modulo", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/institutional_settings/{settingId}": {
+      "schema": "InstitutionalSettings",
+      "description": "General settings and legal identity of ARIQ"
+    },
+    "/news_categories/{categoryId}": {
+      "schema": "NewsCategory",
+      "description": "Categories for news and publications"
+    },
+    "/news/{newsId}": {
+      "schema": "NewsArticle",
+      "description": "Published and draft news articles"
+    },
+    "/courses/{courseId}": {
+      "schema": "Course",
+      "description": "Educational courses and workshops"
+    },
+    "/course_registrations/{registrationId}": {
+      "schema": "CourseRegistration",
+      "description": "Course applicant registrations"
+    },
+    "/events/{eventId}": {
+      "schema": "Event",
+      "description": "Institutional events, congresses, and assemblies"
+    },
+    "/contact_messages/{messageId}": {
+      "schema": "ContactMessage",
+      "description": "Inquiries submitted via contact form"
+    },
+    "/profiles/{userId}": {
+      "schema": "UserProfile",
+      "description": "Administrative user profiles with roles"
+    },
+    "/internal_logs/{logId}": {
+      "schema": "InternalLog",
+      "description": "Administrative activity and audit log"
+    }
+  }
+}

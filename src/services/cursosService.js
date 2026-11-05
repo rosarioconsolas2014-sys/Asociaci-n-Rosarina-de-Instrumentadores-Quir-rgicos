@@ -1,29 +1,60 @@
-import { supabase, isSupabaseConfigured, getLocalStore, setLocalStore, initLocalStore } from './supabase.js';
+import {
+  listDocuments,
+  getDocument,
+  createDocument,
+  updateDocument,
+  deleteDocument,
+  logInternalActivity,
+} from '../firebase/firestore.js';
+import { isFirebaseConfigured, db } from '../firebase/firebase.js';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { slugify } from './noticiasService.js';
+import { getLocalStore, setLocalStore, initLocalStore } from './supabase.js';
 
 initLocalStore();
 
 export const cursosService = {
   async getCursos({ soloActivos = false, modalidad = '', search = '' } = {}) {
-    if (isSupabaseConfigured && supabase) {
-      let query = supabase
-        .from('cursos')
-        .select('*')
-        .order('fecha_inicio', { ascending: true });
+    if (isFirebaseConfigured) {
+      try {
+        const colRef = collection(db, 'courses');
+        let q;
+        if (soloActivos) {
+          q = query(colRef, where('estado', 'in', ['activo', 'proximamente']), orderBy('fecha_inicio', 'asc'));
+        } else {
+          q = query(colRef, orderBy('fecha_inicio', 'asc'));
+        }
 
-      if (soloActivos) {
-        query = query.in('estado', ['activo', 'proximamente']);
-      }
-      if (modalidad) {
-        query = query.eq('modalidad', modalidad);
-      }
-      if (search) {
-        query = query.or(`nombre.ilike.%${search}%,descripcion.ilike.%${search}%`);
-      }
+        const snap = await getDocs(q);
+        let items = snap.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            ...data,
+            cupos: data.cupo_total ?? data.cupos ?? 20,
+            cupos_disponibles: data.vacantes_disponibles ?? data.cupos_disponibles ?? 0,
+          };
+        });
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
+        if (modalidad) {
+          items = items.filter((c) => c.modalidad === modalidad);
+        }
+        if (search) {
+          const qStr = search.toLowerCase();
+          items = items.filter(
+            (c) =>
+              c.nombre?.toLowerCase().includes(qStr) ||
+              c.descripcion?.toLowerCase().includes(qStr) ||
+              c.lugar?.toLowerCase().includes(qStr)
+          );
+        }
+
+        if (items.length > 0) {
+          return items;
+        }
+      } catch (err) {
+        console.warn('Error al cargar cursos de Firestore, usando caché local:', err);
+      }
     }
 
     let items = getLocalStore('CURSOS', []);
@@ -47,28 +78,43 @@ export const cursosService = {
   },
 
   async getCursoBySlug(slug) {
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('cursos')
-        .select('*')
-        .eq('slug', slug)
-        .single();
-      if (error) throw error;
-      return data;
+    if (isFirebaseConfigured) {
+      try {
+        const colRef = collection(db, 'courses');
+        const q = query(colRef, where('slug', '==', slug));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const docSnap = snap.docs[0];
+          const data = docSnap.data();
+          return {
+            id: docSnap.id,
+            ...data,
+            cupos: data.cupo_total ?? data.cupos ?? 20,
+            cupos_disponibles: data.vacantes_disponibles ?? data.cupos_disponibles ?? 0,
+          };
+        }
+      } catch (err) {
+        console.warn('Error al buscar curso por slug en Firestore:', err);
+      }
     }
     const items = getLocalStore('CURSOS', []);
     return items.find((c) => c.slug === slug) || null;
   },
 
   async getCursoById(id) {
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('cursos')
-        .select('*')
-        .eq('id', id)
-        .single();
-      if (error) throw error;
-      return data;
+    if (isFirebaseConfigured) {
+      try {
+        const data = await getDocument('courses', id);
+        if (data) {
+          return {
+            ...data,
+            cupos: data.cupo_total ?? data.cupos ?? 20,
+            cupos_disponibles: data.vacantes_disponibles ?? data.cupos_disponibles ?? 0,
+          };
+        }
+      } catch (err) {
+        console.warn('Error al buscar curso por ID en Firestore:', err);
+      }
     }
     const items = getLocalStore('CURSOS', []);
     return items.find((c) => c.id === id) || null;
@@ -76,23 +122,24 @@ export const cursosService = {
 
   async createCurso(curso) {
     const slug = curso.slug?.trim() ? slugify(curso.slug) : slugify(curso.nombre);
+    const cupoTotal = Number(curso.cupos || curso.cupo_total) || 20;
+    const vacantes = Number(curso.cupos_disponibles ?? curso.vacantes_disponibles ?? cupoTotal);
+
     const newRecord = {
       ...curso,
       slug,
-      cupos: Number(curso.cupos) || 20,
-      cupos_disponibles: Number(curso.cupos_disponibles ?? curso.cupos) || 20,
+      cupos: cupoTotal,
+      cupo_total: cupoTotal,
+      cupos_disponibles: vacantes,
+      vacantes_disponibles: vacantes,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('cursos')
-        .insert([newRecord])
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+    if (isFirebaseConfigured) {
+      const created = await createDocument('courses', newRecord);
+      await logInternalActivity('CREATE_COURSE', 'courses', created.id, `Curso creado: ${newRecord.nombre}`);
+      return created;
     }
 
     const items = getLocalStore('CURSOS', []);
@@ -107,23 +154,23 @@ export const cursosService = {
 
   async updateCurso(id, curso) {
     const slug = curso.slug?.trim() ? slugify(curso.slug) : slugify(curso.nombre);
+    const cupoTotal = Number(curso.cupos || curso.cupo_total) || 20;
+    const vacantes = Number(curso.cupos_disponibles ?? curso.vacantes_disponibles ?? cupoTotal);
+
     const updatedData = {
       ...curso,
       slug,
-      cupos: Number(curso.cupos) || 20,
-      cupos_disponibles: Number(curso.cupos_disponibles),
+      cupos: cupoTotal,
+      cupo_total: cupoTotal,
+      cupos_disponibles: vacantes,
+      vacantes_disponibles: vacantes,
       updated_at: new Date().toISOString(),
     };
 
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('cursos')
-        .update(updatedData)
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+    if (isFirebaseConfigured) {
+      const updated = await updateDocument('courses', id, updatedData);
+      await logInternalActivity('UPDATE_COURSE', 'courses', id, `Curso actualizado: ${curso.nombre || id}`);
+      return updated;
     }
 
     const items = getLocalStore('CURSOS', []);
@@ -136,9 +183,9 @@ export const cursosService = {
   },
 
   async deleteCurso(id) {
-    if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.from('cursos').delete().eq('id', id);
-      if (error) throw error;
+    if (isFirebaseConfigured) {
+      await deleteDocument('courses', id);
+      await logInternalActivity('DELETE_COURSE', 'courses', id, `Curso eliminado id: ${id}`);
       return true;
     }
 

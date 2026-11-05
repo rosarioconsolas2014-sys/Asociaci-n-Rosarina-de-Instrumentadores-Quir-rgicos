@@ -1,25 +1,47 @@
-import { supabase, isSupabaseConfigured, getLocalStore, setLocalStore, initLocalStore } from './supabase.js';
+import {
+  listDocuments,
+  getDocument,
+  createDocument,
+  updateDocument,
+  deleteDocument,
+  logInternalActivity,
+} from '../firebase/firestore.js';
+import { isFirebaseConfigured, db } from '../firebase/firebase.js';
+import { collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { getLocalStore, setLocalStore, initLocalStore } from './supabase.js';
 
 initLocalStore();
 
 export const contactoService = {
   async getContactos({ soloNoLeidos = false, motivo = '' } = {}) {
-    if (isSupabaseConfigured && supabase) {
-      let query = supabase
-        .from('contactos')
-        .select('*')
-        .order('created_at', { ascending: false });
+    if (isFirebaseConfigured) {
+      try {
+        const colRef = collection(db, 'contact_messages');
+        const q = query(colRef, orderBy('created_at', 'desc'));
+        const snap = await getDocs(q);
+        let items = snap.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            ...data,
+            nombre_completo: data.nombre || data.nombre_completo,
+            notas_admin: data.notas_internas || data.notas_admin || '',
+          };
+        });
 
-      if (soloNoLeidos) {
-        query = query.eq('leido', false);
-      }
-      if (motivo) {
-        query = query.eq('motivo', motivo);
-      }
+        if (soloNoLeidos) {
+          items = items.filter((c) => !c.leido);
+        }
+        if (motivo) {
+          items = items.filter((c) => c.motivo === motivo);
+        }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
+        if (items.length > 0) {
+          return items;
+        }
+      } catch (err) {
+        console.warn('Error al cargar contactos de Firestore, usando caché:', err);
+      }
     }
 
     let items = getLocalStore('CONTACTOS', []);
@@ -32,20 +54,19 @@ export const contactoService = {
     return items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   },
 
-  async enviarConsulta({ nombre_completo, email, telefono, motivo, mensaje, honeypot }) {
-    // Spam bot honeypot protection: if hidden field is filled, reject silently
+  async enviarConsulta({ nombre, nombre_completo, email, telefono, motivo, mensaje, honeypot }) {
     if (honeypot) {
       throw new Error('Solicitud no autorizada.');
     }
 
-    // Basic rate limit check in client (at most 1 submission every 20 seconds from same browser session)
     const lastSent = sessionStorage.getItem('ariq_contact_timestamp');
     const now = Date.now();
     if (lastSent && now - Number(lastSent) < 15000) {
       throw new Error('Por favor espere unos segundos antes de enviar otra consulta.');
     }
 
-    if (!nombre_completo || !email || !mensaje || !motivo) {
+    const remitente = (nombre || nombre_completo || '').trim();
+    if (!remitente || !email || !mensaje || !motivo) {
       throw new Error('Por favor complete todos los campos obligatorios.');
     }
 
@@ -55,26 +76,23 @@ export const contactoService = {
     }
 
     const newRecord = {
-      nombre_completo: nombre_completo.trim(),
+      nombre: remitente,
+      nombre_completo: remitente,
       email: email.trim().toLowerCase(),
       telefono: telefono?.trim() || null,
       motivo,
       mensaje: mensaje.trim(),
       leido: false,
       respondido: false,
+      notas_internas: '',
       notas_admin: '',
       created_at: new Date().toISOString(),
     };
 
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('contactos')
-        .insert([newRecord])
-        .select()
-        .single();
-      if (error) throw error;
+    if (isFirebaseConfigured) {
+      const created = await createDocument('contact_messages', newRecord);
       sessionStorage.setItem('ariq_contact_timestamp', String(now));
-      return data;
+      return created;
     }
 
     const items = getLocalStore('CONTACTOS', []);
@@ -89,15 +107,9 @@ export const contactoService = {
   },
 
   async marcarLeido(id, leido = true) {
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('contactos')
-        .update({ leido })
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+    if (isFirebaseConfigured) {
+      const updated = await updateDocument('contact_messages', id, { leido });
+      return updated;
     }
 
     const items = getLocalStore('CONTACTOS', []);
@@ -109,15 +121,14 @@ export const contactoService = {
   },
 
   async marcarRespondido(id, respondido = true, notas = '') {
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase
-        .from('contactos')
-        .update({ respondido, notas_admin: notas })
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+    if (isFirebaseConfigured) {
+      const updated = await updateDocument('contact_messages', id, {
+        respondido,
+        notas_internas: notas,
+        notas_admin: notas,
+      });
+      await logInternalActivity('REPLY_CONTACT', 'contact_messages', id, 'Consulta marcada como respondida');
+      return updated;
     }
 
     const items = getLocalStore('CONTACTOS', []);
@@ -127,15 +138,16 @@ export const contactoService = {
       ...items[index],
       respondido,
       notas_admin: notas || items[index].notas_admin,
+      notas_internas: notas || items[index].notas_internas,
     };
     setLocalStore('CONTACTOS', items);
     return items[index];
   },
 
   async deleteContacto(id) {
-    if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.from('contactos').delete().eq('id', id);
-      if (error) throw error;
+    if (isFirebaseConfigured) {
+      await deleteDocument('contact_messages', id);
+      await logInternalActivity('DELETE_CONTACT', 'contact_messages', id, `Consulta eliminada id: ${id}`);
       return true;
     }
 
