@@ -167,5 +167,15 @@ service cloud.firestore {
       allow update, delete: if false; // Immutable audit trail
     }
 
+    // =========================================================================
+    // 10. SYSTEM HEALTH LOGS & INCIDENTS (Monitoring & Production Control)
+    // =========================================================================
+    match /system_health_logs/{logId} {
+      allow read, list: if isStaff();
+      allow create: if isStaff() && isValidId(logId);
+      allow update: if isStaff() && isValidId(logId);
+      allow delete: if isAdmin() && isValidId(logId);
+    }
+
   }
 }

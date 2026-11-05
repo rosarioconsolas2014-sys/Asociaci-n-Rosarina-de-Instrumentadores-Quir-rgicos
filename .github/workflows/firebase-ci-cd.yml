@@ -1,0 +1,87 @@
+name: ARIQ - CI/CD & Despliegue Continuo a Firebase
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  build_and_test:
+    name: Compilación, Lint y Verificación
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Descargar código fuente
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Validación de Tipos y Sintaxis (Linter)
+        run: npm run lint
+
+      - name: Compilación de Producción (Vite Build)
+        env:
+          VITE_FIREBASE_PROJECT_ID: 'ariq-rosario'
+          VITE_FIREBASE_APP_ID: '1:947553438793:web:c244dd8e3a4ac1f3364398'
+          VITE_FIREBASE_API_KEY: 'AIzaSyBJZ_hthI3XLKnoExaxHG1l7OaSQ9cJA5A'
+          VITE_FIREBASE_AUTH_DOMAIN: 'ariq-rosario.firebaseapp.com'
+          VITE_FIREBASE_DATABASE_ID: '(default)'
+          VITE_FIREBASE_STORAGE_BUCKET: 'ariq-rosario.firebasestorage.app'
+          VITE_FIREBASE_MESSAGING_SENDER_ID: '947553438793'
+        run: npm run build
+
+      - name: Archivar artefacto compilado
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-production
+          path: dist/
+          retention-days: 7
+
+  deploy_to_firebase:
+    name: Despliegue a Firebase Hosting
+    needs: build_and_test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Descargar código fuente
+        uses: actions/checkout@v4
+
+      - name: Descargar artefacto compilado
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-production
+          path: dist/
+
+      - name: Desplegar a Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_ARIQ_ROSARIO }}
+          channelId: live
+          projectId: ariq-rosario
+        continue-on-error: true
+
+      - name: Ejecutar Verificación Post-Despliegue
+        run: |
+          node scripts/health-check.mjs
+        env:
+          APP_URL: 'https://ariq-rosario.firebaseapp.com'

@@ -185,6 +185,24 @@
         "timestamp": { "type": "string" }
       },
       "required": ["usuario_email", "accion", "modulo", "timestamp"]
+    },
+    "SystemHealthLog": {
+      "title": "SystemHealthLog",
+      "description": "System health and incident tracking log for monitoring and production control",
+      "type": "object",
+      "properties": {
+        "servicio": { "type": "string", "enum": ["hosting", "firestore", "auth", "storage", "rutas", "github_actions"] },
+        "tipo_error": { "type": "string" },
+        "descripcion": { "type": "string" },
+        "estado": { "type": "string", "enum": ["abierto", "investigando", "resuelto"] },
+        "severidad": { "type": "string", "enum": ["critico", "advertencia", "info"] },
+        "latencia_ms": { "type": "number" },
+        "fecha_resolucion": { "type": "string" },
+        "resolucion_notas": { "type": "string" },
+        "creado_por": { "type": "string", "enum": ["sistema_automatico", "admin_manual"] },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["servicio", "tipo_error", "descripcion", "estado", "severidad", "timestamp"]
     }
   },
   "firestore": {
@@ -223,6 +241,10 @@
     "/internal_logs/{logId}": {
       "schema": "InternalLog",
       "description": "Administrative activity and audit log"
+    },
+    "/system_health_logs/{logId}": {
+      "schema": "SystemHealthLog",
+      "description": "Production monitoring, incidents, and health checks log"
     }
   }
 }
