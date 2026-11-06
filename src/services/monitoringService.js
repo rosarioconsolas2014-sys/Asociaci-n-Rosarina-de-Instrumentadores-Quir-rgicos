@@ -17,7 +17,7 @@ import {
   limit,
   getDocFromServer,
 } from 'firebase/firestore';
-import { db, auth, firebaseConfig, isFirebaseConfigured } from '../firebase/firebase.js';
+import { db, firebaseConfig, isFirebaseConfigured } from '../firebase/firebase.js';
 import { getImageData } from './imageService.js';
 
 // Status Enums
@@ -285,28 +285,26 @@ export async function verifyFirebaseHealth() {
     ? HealthStatus.ADVERTENCIA
     : HealthStatus.ERROR;
 
-  // 4.5 Test Firebase Authentication
+  // 4.5 Test Autenticación Propia en Firestore (admin_users)
   const t0Auth = performance.now();
   let authDetail = '';
   let authLatency = 0;
   try {
-    if (auth && auth.app) {
-      const isAuthDomainValid = Boolean(auth.config?.authDomain || firebaseConfig.authDomain);
-      const t1Auth = performance.now();
-      authLatency = Math.round(t1Auth - t0Auth);
-      authStatus = isAuthDomainValid ? HealthStatus.OPERATIVO : HealthStatus.ADVERTENCIA;
-      authDetail = auth.currentUser
-        ? 'Servicio activo y usuario autenticado en sesión'
-        : 'Servicio activo y listo para autenticación (sesión anónima/invitado)';
+    const qAdmin = query(collection(db, 'admin_users'), limit(1));
+    const snapAdmin = await getDocs(qAdmin);
+    const t1Auth = performance.now();
+    authLatency = Math.round(t1Auth - t0Auth);
+    if (!snapAdmin.empty) {
+      authStatus = HealthStatus.OPERATIVO;
+      authDetail = `Sistema de autenticación propia operativo con ${snapAdmin.size} usuario(s) registrado(s) y hashing bcrypt activo.`;
     } else {
-      authStatus = HealthStatus.ERROR;
-      authDetail = 'SDK de autenticación no inicializado';
-      errors.push('Firebase Auth: No inicializado');
+      authStatus = HealthStatus.ADVERTENCIA;
+      authDetail = 'Colección admin_users vacía. Se requiere ejecutar script bootstrap de administrador.';
     }
   } catch (err) {
     authStatus = HealthStatus.ERROR;
     authDetail = err instanceof Error ? err.message : String(err);
-    errors.push(`Firebase Auth: ${authDetail}`);
+    errors.push(`Autenticación Propia: ${authDetail}`);
   }
 
   // 4.6 Verificación de Almacenamiento de Imágenes en Base64 dentro de Firestore (Sin Firebase Storage)

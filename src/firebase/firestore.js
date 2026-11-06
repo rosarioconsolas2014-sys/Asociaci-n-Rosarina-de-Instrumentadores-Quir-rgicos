@@ -15,7 +15,7 @@ import {
   serverTimestamp,
   onSnapshot,
 } from 'firebase/firestore';
-import { db, auth } from './firebase.js';
+import { db } from './firebase.js';
 
 export const OperationType = {
   CREATE: 'create',
@@ -26,23 +26,27 @@ export const OperationType = {
   WRITE: 'write',
 };
 
+function getActiveSessionUser() {
+  try {
+    const raw = localStorage.getItem('ariq_admin_session_v2');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Mandatory Error Handler conforming strictly to FirestoreErrorInfo schema
  */
 export function handleFirestoreError(error, operationType, path) {
+  const sessionUser = getActiveSessionUser();
   const errInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
-      userId: auth.currentUser?.uid || null,
-      email: auth.currentUser?.email || null,
-      emailVerified: auth.currentUser?.emailVerified || null,
-      isAnonymous: auth.currentUser?.isAnonymous || null,
-      tenantId: auth.currentUser?.tenantId || null,
-      providerInfo:
-        auth.currentUser?.providerData?.map((provider) => ({
-          providerId: provider.providerId,
-          email: provider.email,
-        })) || [],
+      userId: sessionUser?.userId || null,
+      email: sessionUser?.email || null,
+      username: sessionUser?.username || null,
+      role: sessionUser?.role || null,
     },
     operationType,
     path,
@@ -237,10 +241,11 @@ export async function registerForCourseTransaction(registrationData) {
  */
 export async function logInternalActivity(action, moduleName, recordId, details = '') {
   try {
-    const user = auth.currentUser;
+    const user = getActiveSessionUser();
     const logData = {
-      usuario_email: user?.email || 'sistema@ariq.org.ar',
-      usuario_uid: user?.uid || 'system',
+      usuario_email: user?.email || user?.username || 'sistema@ariq.org.ar',
+      usuario_uid: user?.userId || 'system',
+      usuario_rol: user?.role || 'admin',
       accion: action,
       modulo: moduleName,
       registro_id: String(recordId || ''),

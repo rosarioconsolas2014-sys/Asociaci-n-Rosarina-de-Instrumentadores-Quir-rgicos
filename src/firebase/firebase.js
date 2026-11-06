@@ -1,5 +1,4 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfigJson from '../../firebase-applet-config.json';
 
@@ -20,11 +19,7 @@ export const firebaseConfig = {
 // Initialize Firebase app singleton
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize services (Firebase Authentication & Cloud Firestore exclusively)
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
-
-// Critical: Pass firestoreDatabaseId if custom database ID is configured
+// Initialize Cloud Firestore exclusively (NO Firebase Authentication, NO Firebase Storage)
 export const db =
   firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
     ? getFirestore(app, firebaseConfig.firestoreDatabaseId)

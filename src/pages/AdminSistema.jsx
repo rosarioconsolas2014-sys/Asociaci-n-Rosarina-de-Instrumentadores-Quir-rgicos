@@ -275,19 +275,24 @@ export default function AdminSistema() {
     }
   };
 
-  const adminCliScript = `# Dar de alta el Administrador Principal en ariq-rosario:
-# 1. En Firebase Authentication > Crear usuario con email y contraseña:
-#    Email: admin@ariq.org.ar
-#    Contraseña: [tu-contraseña-segura]
+  const adminCliScript = `# Inicialización del Administrador Principal mediante script seguro:
+# Se ejecuta en terminal del servidor (hashea contraseña con bcrypt cost factor 12):
+npm run bootstrap:admin
 
-# 2. En Cloud Firestore > Colección 'profiles' > Documento con ID = UID del usuario:
+# O mediante variables de entorno seguras:
+ADMIN_USERNAME="admin" ADMIN_EMAIL="admin@ariq.org.ar" ADMIN_PASSWORD="MiPasswordSegura123!" npm run bootstrap:admin
+
+# Documento persistido en Cloud Firestore (/admin_users/<userId>):
 {
-  "uid": "<USER_UID>",
+  "id": "admin_5016e277033f79ac",
+  "username": "admin",
   "email": "admin@ariq.org.ar",
-  "full_name": "Administrador General ARIQ",
+  "passwordHash": "$2a$12$...",
   "role": "admin",
-  "activo": true,
-  "created_at": "${new Date().toISOString()}"
+  "active": true,
+  "createdAt": "${new Date().toISOString()}",
+  "failedAttempts": 0,
+  "lockedUntil": null
 }`;
 
   return (
@@ -513,7 +518,7 @@ export default function AdminSistema() {
               </div>
             </Card>
 
-            {/* Firebase Auth */}
+            {/* Autenticación Propia */}
             <Card padding="p-5" className="border-stone-200">
               <div className="flex items-center justify-between mb-3">
                 <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -521,13 +526,13 @@ export default function AdminSistema() {
                 </div>
                 {renderStatusBadge(auditReport?.firebase?.auth?.status || HealthStatus.SIN_VERIFICAR)}
               </div>
-              <h3 className="text-xs font-bold text-stone-900">Firebase Authentication</h3>
+              <h3 className="text-xs font-bold text-stone-900">Autenticación Propia</h3>
               <p className="text-[11px] text-stone-500 mt-1 line-clamp-1">
-                Google Auth + Email/Pass
+                Firestore admin_users + Bcrypt
               </p>
               <div className="mt-2 pt-2 border-t border-stone-100 text-[10px] text-stone-400 flex items-center justify-between">
-                <span>Persistencia:</span>
-                <span className="font-semibold text-stone-700">Segura</span>
+                <span>Seguridad:</span>
+                <span className="font-semibold text-emerald-700">Anti-Fuerza Bruta</span>
               </div>
             </Card>
 

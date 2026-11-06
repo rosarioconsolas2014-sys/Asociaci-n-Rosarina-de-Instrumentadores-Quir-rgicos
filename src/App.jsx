@@ -23,6 +23,9 @@ import AdminEventos from './pages/AdminEventos.jsx';
 import AdminInscripciones from './pages/AdminInscripciones.jsx';
 import AdminContacto from './pages/AdminContacto.jsx';
 import AdminConfiguracion from './pages/AdminConfiguracion.jsx';
+import AdminInstitucional from './pages/AdminInstitucional.jsx';
+import AdminUsuarios from './pages/AdminUsuarios.jsx';
+import AdminAuditoria from './pages/AdminAuditoria.jsx';
 import AdminSistema from './pages/AdminSistema.jsx';
 
 // Security
@@ -99,12 +102,38 @@ export default function App() {
             }
           />
 
+          {/* Institutional Management (Admin) */}
+          <Route
+            path="institucional"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminInstitucional />
+              </ProtectedRoute>
+            }
+          />
+
           {/* System Settings & Database (Admin only) */}
           <Route
             path="configuracion"
             element={
               <ProtectedRoute requiredRole="admin">
                 <AdminConfiguracion />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="usuarios"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminUsuarios />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="auditoria"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminAuditoria />
               </ProtectedRoute>
             }
           />

@@ -204,6 +204,41 @@
         "timestamp": { "type": "string" }
       },
       "required": ["servicio", "tipo_error", "descripcion", "estado", "severidad", "timestamp"]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Custom administrative user record with salted bcrypt password hash",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "email": { "type": "string" },
+        "passwordHash": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "editor", "operador"] },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "lastLogin": { "type": "string" },
+        "failedAttempts": { "type": "number" },
+        "lockedUntil": { "type": "string" }
+      },
+      "required": ["id", "username", "email", "passwordHash", "role", "active", "createdAt", "updatedAt"]
+    },
+    "AdminSession": {
+      "title": "AdminSession",
+      "description": "Server-side cryptographically signed session record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "editor", "operador"] },
+        "createdAt": { "type": "string" },
+        "expiresAt": { "type": "string" },
+        "lastActivity": { "type": "string" }
+      },
+      "required": ["id", "userId", "role", "expiresAt"]
     }
   },
   "firestore": {
@@ -246,6 +281,14 @@
     "/system_health_logs/{logId}": {
       "schema": "SystemHealthLog",
       "description": "Production monitoring, incidents, and health checks log"
+    },
+    "/admin_users/{userId}": {
+      "schema": "AdminUser",
+      "description": "Private administrative user accounts with bcrypt hashes"
+    },
+    "/admin_sessions/{sessionId}": {
+      "schema": "AdminSession",
+      "description": "Private server-side session records"
     }
   }
 }

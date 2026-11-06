@@ -11,6 +11,8 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
+  ShieldCheck,
+  Building2,
 } from 'lucide-react';
 import Card from '../components/Card.jsx';
 import Button from '../components/Button.jsx';
@@ -32,6 +34,7 @@ export default function Dashboard() {
     inscripcionesPendientes: 0,
     contactosTotal: 0,
     contactosNoLeidos: 0,
+    usuariosTotal: 0,
   });
 
   const [recentInscripciones, setRecentInscripciones] = useState([]);
@@ -42,12 +45,13 @@ export default function Dashboard() {
     async function loadDashboard() {
       try {
         setLoading(true);
-        const [news, courses, events, enrollments, contacts] = await Promise.all([
+        const [news, courses, events, enrollments, contacts, users] = await Promise.all([
           noticiasService.getNoticias(),
           cursosService.getCursos(),
           eventosService.getEventos(),
           inscripcionesService.getInscripciones(),
           contactoService.getContactos(),
+          authService.listUsers().catch(() => []),
         ]);
 
         setStats({
@@ -59,6 +63,7 @@ export default function Dashboard() {
           inscripcionesPendientes: enrollments.filter((i) => i.estado === 'pendiente').length,
           contactosTotal: contacts.length,
           contactosNoLeidos: contacts.filter((c) => !c.leido).length,
+          usuariosTotal: users.length,
         });
 
         setRecentInscripciones(enrollments.slice(0, 5));
@@ -111,8 +116,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      {/* KPI Cards Grid - 5 Métricas Principales */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Noticias */}
         <Card padding="p-5">
           <div className="flex items-center justify-between mb-3">
@@ -128,14 +133,14 @@ export default function Dashboard() {
               {stats.noticiasTotal}
             </span>
             <span className="text-xs text-stone-500">
-              ({stats.noticiasPublicadas} publicadas)
+              ({stats.noticiasPublicadas} pub.)
             </span>
           </div>
           <Link
             to="/admin/noticias"
             className="text-xs font-medium text-red-600 hover:text-red-700 inline-flex items-center gap-1 mt-3"
           >
-            <span>Administrar noticias</span>
+            <span>Noticias</span>
             <ArrowRight className="w-3 h-3" />
           </Link>
         </Card>
@@ -155,43 +160,41 @@ export default function Dashboard() {
               {stats.cursosTotal}
             </span>
             <span className="text-xs text-stone-500">
-              Programas activos
+              Activos
             </span>
           </div>
           <Link
             to="/admin/cursos"
             className="text-xs font-medium text-blue-600 hover:text-blue-700 inline-flex items-center gap-1 mt-3"
           >
-            <span>Gestionar capacitaciones</span>
+            <span>Cursos</span>
             <ArrowRight className="w-3 h-3" />
           </Link>
         </Card>
 
-        {/* Inscripciones */}
+        {/* Eventos */}
         <Card padding="p-5">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-stone-500 uppercase tracking-wide">
-              Inscripciones
+              Eventos
             </span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <Users className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+              <Calendar className="w-4 h-4" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-bold text-stone-900 tabular-nums">
-              {stats.inscripcionesTotal}
+              {stats.eventosTotal}
             </span>
-            {stats.inscripcionesPendientes > 0 && (
-              <span className="text-xs font-semibold text-amber-600">
-                ({stats.inscripcionesPendientes} pendientes)
-              </span>
-            )}
+            <span className="text-xs text-stone-500">
+              Agendados
+            </span>
           </div>
           <Link
-            to="/admin/inscripciones"
-            className="text-xs font-medium text-emerald-600 hover:text-emerald-700 inline-flex items-center gap-1 mt-3"
+            to="/admin/eventos"
+            className="text-xs font-medium text-purple-600 hover:text-purple-700 inline-flex items-center gap-1 mt-3"
           >
-            <span>Ver inscriptos</span>
+            <span>Eventos</span>
             <ArrowRight className="w-3 h-3" />
           </Link>
         </Card>
@@ -212,7 +215,7 @@ export default function Dashboard() {
             </span>
             {stats.contactosNoLeidos > 0 && (
               <span className="text-xs font-semibold text-rose-600">
-                ({stats.contactosNoLeidos} no leídas)
+                ({stats.contactosNoLeidos} nuevas)
               </span>
             )}
           </div>
@@ -220,7 +223,34 @@ export default function Dashboard() {
             to="/admin/contacto"
             className="text-xs font-medium text-amber-600 hover:text-amber-700 inline-flex items-center gap-1 mt-3"
           >
-            <span>Revisar mensajes</span>
+            <span>Mensajes</span>
+            <ArrowRight className="w-3 h-3" />
+          </Link>
+        </Card>
+
+        {/* Usuarios del Panel */}
+        <Card padding="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-stone-500 uppercase tracking-wide">
+              Usuarios Panel
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-stone-900 tabular-nums">
+              {stats.usuariosTotal}
+            </span>
+            <span className="text-xs text-stone-500">
+              Registrados
+            </span>
+          </div>
+          <Link
+            to="/admin/usuarios"
+            className="text-xs font-medium text-emerald-600 hover:text-emerald-700 inline-flex items-center gap-1 mt-3"
+          >
+            <span>Gestión</span>
             <ArrowRight className="w-3 h-3" />
           </Link>
         </Card>

@@ -1,6 +1,6 @@
 {
   "name": "ariq-functions",
-  "description": "Cloud Functions para alertas de incidentes críticos y monitoreo del sistema ARIQ",
+  "description": "Cloud Functions para autenticación segura administrativa y monitoreo del sistema ARIQ",
   "scripts": {
     "lint": "eslint .",
     "serve": "firebase emulators:start --only functions",
@@ -13,6 +13,9 @@
   },
   "main": "index.js",
   "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie": "^0.6.0",
+    "cors": "^2.8.5",
     "firebase-admin": "^12.0.0",
     "firebase-functions": "^5.0.0",
     "nodemailer": "^6.9.10"

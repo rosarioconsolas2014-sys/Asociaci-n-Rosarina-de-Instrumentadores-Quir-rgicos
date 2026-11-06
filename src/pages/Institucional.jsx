@@ -42,10 +42,12 @@ export default function Institucional() {
                 </h2>
                 <div className="prose prose-stone text-sm text-stone-600 space-y-4 leading-relaxed">
                   <p>
-                    Fundada con el objeto de jerarquizar y dignificar el ejercicio de la instrumentación quirúrgica, nuestra asociación civil obtuvo el reconocimiento de su <strong>Personería Jurídica mediante Resolución I.G.P.J. N° 412/1988</strong> por parte de la Inspección General de Personas Jurídicas de la Provincia de Santa Fe.
+                    {config?.historia_resumen ||
+                      'Fundada con el objeto de jerarquizar y dignificar el ejercicio de la instrumentación quirúrgica, nuestra asociación civil obtuvo el reconocimiento de su Personería Jurídica mediante Resolución I.G.P.J. N° 412/1988 por parte de la Inspección General de Personas Jurídicas de la Provincia de Santa Fe.'}
                   </p>
                   <p>
-                    A lo largo de más de tres décadas, ARIQ ha sido promotora activa de leyes provinciales de ejercicio profesional, garantizando que el acto perioperatorio sea desempeñado por profesionales formados en instituciones universitarias y terciarias oficialmente reconocidas.
+                    {config?.historia_completa ||
+                      'A lo largo de más de tres décadas, ARIQ ha sido promotora activa de leyes provinciales de ejercicio profesional, garantizando que el acto perioperatorio sea desempeñado por profesionales formados en instituciones universitarias y terciarias oficialmente reconocidas.'}
                   </p>
                 </div>
               </div>
@@ -60,7 +62,8 @@ export default function Institucional() {
                     <HeartPulse className="w-6 h-6 text-red-600 mb-3" />
                     <h3 className="text-base font-bold text-stone-900 mb-2">Misión</h3>
                     <p className="text-xs text-stone-600 leading-relaxed">
-                      Representar gremial, legal y científicamente a los instrumentadores quirúrgicos, velando por la excelencia y la seguridad del paciente.
+                      {config?.mision ||
+                        'Representar gremial, legal y científicamente a los instrumentadores quirúrgicos, velando por la excelencia y la seguridad del paciente.'}
                     </p>
                   </Card>
 
@@ -68,7 +71,8 @@ export default function Institucional() {
                     <Award className="w-6 h-6 text-red-600 mb-3" />
                     <h3 className="text-base font-bold text-stone-900 mb-2">Visión</h3>
                     <p className="text-xs text-stone-600 leading-relaxed">
-                      Ser el referente indiscutido en formación continua, investigación y regulación de la disciplina quirúrgica en el centro del país.
+                      {config?.vision ||
+                        'Ser el referente indiscutido en formación continua, investigación y regulación de la disciplina quirúrgica en el centro del país.'}
                     </p>
                   </Card>
 
@@ -76,7 +80,8 @@ export default function Institucional() {
                     <Scale className="w-6 h-6 text-red-600 mb-3" />
                     <h3 className="text-base font-bold text-stone-900 mb-2">Valores</h3>
                     <p className="text-xs text-stone-600 leading-relaxed">
-                      Ética profesional, rigor científico, compromiso deontológico, trabajo interdisciplinario y solidaridad gremial.
+                      {config?.valores ||
+                        'Ética profesional, rigor científico, compromiso deontológico, trabajo interdisciplinario y solidaridad gremial.'}
                     </p>
                   </Card>
                 </div>
@@ -89,10 +94,8 @@ export default function Institucional() {
                 </h2>
                 <div className="prose prose-stone text-sm text-stone-600 space-y-4 leading-relaxed">
                   <p>
-                    El Instrumentador Quirúrgico es un miembro indispensable del equipo interdisciplinario que asiste técnica, científica y humanamente al paciente antes, durante y después del procedimiento quirúrgico.
-                  </p>
-                  <p>
-                    Sus competencias comprenden desde el estricto mantenimiento de las cadenas de asepsia y antisepsia, la preparación y control del instrumental específico (abierto, laparoscópico, endoscópico y robótico), hasta la verificación del Checklist de Cirugía Segura de la OMS y el recuento riguroso de gasas, compresas e instrumental.
+                    {config?.rol_profesional_texto ||
+                      'El Instrumentador Quirúrgico es un miembro indispensable del equipo interdisciplinario que asiste técnica, científica y humanamente al paciente antes, durante y después del procedimiento quirúrgico. Sus competencias comprenden desde el estricto mantenimiento de las cadenas de asepsia y antisepsia, la preparación y control del instrumental específico (abierto, laparoscópico, endoscópico y robótico), hasta la verificación del Checklist de Cirugía Segura de la OMS y el recuento riguroso de gasas, compresas e instrumental.'}
                   </p>
                 </div>
               </div>
@@ -103,22 +106,20 @@ export default function Institucional() {
                   Objetivos Estatutarios Principales
                 </h2>
                 <ul className="space-y-3 text-sm text-stone-700">
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                    <span>Promover la jerarquización del título profesional y su adecuada remuneración laboral.</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                    <span>Organizar congresos, jornadas, ateneos y cursos de actualización científica con aval institucional.</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                    <span>Defender los intereses gremiales y profesionales de los asociados ante las autoridades de salud públicas y privadas.</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                    <span>Propiciar la colegiación legal de la instrumentación quirúrgica en la Provincia de Santa Fe.</span>
-                  </li>
+                  {(config?.objetivos_estatutarios && config.objetivos_estatutarios.length > 0
+                    ? config.objetivos_estatutarios
+                    : [
+                        'Promover la jerarquización del título profesional y su adecuada remuneración laboral.',
+                        'Organizar congresos, jornadas, ateneos y cursos de actualización científica con aval institucional.',
+                        'Defender los intereses gremiales y profesionales de los asociados ante las autoridades de salud públicas y privadas.',
+                        'Propiciar la colegiación legal de la instrumentación quirúrgica en la Provincia de Santa Fe.',
+                      ]
+                  ).map((obj, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <CheckCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                      <span>{obj}</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
