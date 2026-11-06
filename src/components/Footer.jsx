@@ -142,20 +142,41 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Bottom bar */}
-        <div className="pt-8 border-t border-stone-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-stone-500">
-          <p>
-            &copy; {currentYear} Instrumentadores Quirúrgicos Profesionales de Rosario Asociación Civil (ARIQ). Todos los derechos reservados.
-          </p>
-          <div className="flex items-center gap-6">
-            <Link to="/institucional" className="hover:text-stone-400 transition-colors">
-              Estatuto Social
-            </Link>
-            <Link to="/contacto" className="hover:text-stone-400 transition-colors">
-              Consultas
-            </Link>
-          </div>
-        </div>
+    {/* Bottom bar */}
+<div className="pt-8 border-t border-stone-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-stone-500">
+  <p>
+    &copy; {currentYear} Instrumentadores Quirúrgicos Profesionales de Rosario Asociación Civil (ARIQ). Todos los derechos reservados.
+  </p>
+
+  <div className="flex items-center gap-6">
+    <Link to="/institucional" className="hover:text-stone-400 transition-colors">
+      Estatuto Social
+    </Link>
+    <Link to="/contacto" className="hover:text-stone-400 transition-colors">
+      Consultas
+    </Link>
+  </div>
+</div>
+
+{/* Desarrollo */}
+<div className="mt-6 pt-5 border-t border-stone-800/60 flex flex-col sm:flex-row items-center justify-center gap-2 text-xs">
+  <span className="text-stone-500">
+    Desarrollado por
+  </span>
+
+  <span className="font-bold tracking-wider text-stone-300">
+    CARVISOFTWARE
+  </span>
+
+  <span className="hidden sm:inline text-stone-600">|</span>
+
+  <a
+    href="tel:3412570106"
+    className="text-stone-400 hover:text-red-400 transition-colors"
+  >
+    Contacto comercial: 3412-570106
+  </a>
+</div>
       </div>
     </footer>
   );
