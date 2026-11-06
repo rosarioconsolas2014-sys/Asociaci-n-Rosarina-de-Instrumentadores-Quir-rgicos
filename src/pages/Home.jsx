@@ -18,25 +18,29 @@ import Card from '../components/Card.jsx';
 import { noticiasService } from '../services/noticiasService.js';
 import { cursosService } from '../services/cursosService.js';
 import { eventosService } from '../services/eventosService.js';
+import { configuracionService } from '../services/configuracionService.js';
 
 export default function Home() {
   const [noticias, setNoticias] = useState([]);
   const [cursos, setCursos] = useState([]);
   const [eventos, setEventos] = useState([]);
+  const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadHomeData() {
       try {
         setLoading(true);
-        const [newsData, coursesData, eventsData] = await Promise.all([
+        const [newsData, coursesData, eventsData, cfgData] = await Promise.all([
           noticiasService.getNoticias({ soloPublicadas: true }),
           cursosService.getCursos({ soloActivos: true }),
           eventosService.getEventos({ soloPublicados: true }),
+          configuracionService.getConfiguracion(),
         ]);
         setNoticias(newsData.slice(0, 3));
         setCursos(coursesData.slice(0, 3));
         setEventos(eventsData.slice(0, 2));
+        setConfig(cfgData);
       } catch (err) {
         console.error('Error cargando datos de inicio:', err);
       } finally {
@@ -55,17 +59,17 @@ export default function Home() {
             {/* Left Column: Institutional Value Proposition */}
             <div className="lg:col-span-7 space-y-6">
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-red-700">
-                <span>Asociación Civil Fundada en 1988</span>
+                <span>{config?.hero_lema_legal?.split('·')[0]?.trim() || 'Asociación Civil Fundada en 1988'}</span>
                 <span aria-hidden="true">·</span>
-                <span>Resolución I.G.P.J. N° 412</span>
+                <span>{config?.hero_lema_legal?.split('·')[1]?.trim() || 'Resolución I.G.P.J. N° 412'}</span>
               </div>
 
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-stone-900 leading-[1.15]" style={{ textWrap: 'balance' }}>
-                Instrumentadores Quirúrgicos Profesionales de Rosario
+                {config?.hero_titulo || 'Instrumentadores Quirúrgicos Profesionales de Rosario'}
               </h1>
 
               <p className="text-base sm:text-lg text-stone-600 leading-relaxed max-w-2xl">
-                Nucleamos y representamos a los profesionales de la instrumentación quirúrgica de Rosario y su zona de influencia. Promovemos la capacitación científica continua, la seguridad del paciente en el quirófano y la jerarquización del ejercicio profesional.
+                {config?.hero_subtitulo || 'Nucleamos y representamos a los profesionales de la instrumentación quirúrgica de Rosario y su zona de influencia. Promovemos la capacitación científica continua, la seguridad del paciente en el quirófano y la jerarquización del ejercicio profesional.'}
               </p>
 
               {/* Action Buttons */}
@@ -114,17 +118,17 @@ export default function Home() {
             <div className="lg:col-span-5">
               <div className="relative rounded-2xl overflow-hidden border border-stone-200 shadow-lg bg-stone-100">
                 <img
-                  src="/images/hero-suite.jpg"
+                  src={config?.hero_imagen_base64 || '/images/hero-suite.jpg'}
                   alt="Quirófano e instrumental quirúrgico estéril de precisión"
                   className="w-full h-[400px] object-cover"
                   referrerPolicy="no-referrer"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-stone-950/20 to-transparent flex flex-col justify-end p-6 text-white">
                   <span className="text-xs font-semibold uppercase tracking-wider text-red-300">
-                    Excelencia Perioperatoria
+                    {config?.hero_badge || 'Excelencia Perioperatoria'}
                   </span>
                   <p className="text-sm font-medium text-stone-100 mt-1">
-                    Compromiso con las normas internacionales de bioseguridad y el rigor técnico en quirófano.
+                    {config?.hero_cita || 'Compromiso con las normas internacionales de bioseguridad y el rigor técnico en quirófano.'}
                   </p>
                 </div>
               </div>

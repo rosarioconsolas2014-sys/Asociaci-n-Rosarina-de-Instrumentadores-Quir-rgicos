@@ -87,10 +87,10 @@ async function run() {
     }
 
     if (!password) {
-      password = await prompt('Ingrese la contraseña para el Administrador (mínimo 8 caracteres): ');
+      password = await prompt('Ingrese la contraseña para el Administrador: ');
     }
-    if (!password || password.length < 8) {
-      console.error('❌ Error: La contraseña debe tener como mínimo 8 caracteres.');
+    if (!password || password.length < 4) {
+      console.error('❌ Error: La contraseña debe tener como mínimo 4 caracteres.');
       process.exit(1);
     }
 
@@ -103,7 +103,8 @@ async function run() {
     const snapUsername = await getDocs(qUsername);
     if (!snapUsername.empty) {
       console.warn(`⚠️  Ya existe un usuario con el nombre de usuario "${username}".`);
-      const overwrite = await prompt('¿Desea actualizar su contraseña y asegurar rol admin? (s/N): ');
+      const isAutoConfirm = process.env.AUTO_CONFIRM === 'true' || process.env.OVERWRITE === 'true';
+      const overwrite = isAutoConfirm ? 's' : await prompt('¿Desea actualizar su contraseña y asegurar rol admin? (s/N): ');
       if (overwrite.toLowerCase() !== 's') {
         console.log('Operación cancelada por el usuario.');
         process.exit(0);

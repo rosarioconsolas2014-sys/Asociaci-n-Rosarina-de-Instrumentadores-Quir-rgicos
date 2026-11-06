@@ -1,3 +1,10 @@
+/**
+ * @file noticiasService.js
+ * Servicio de Noticias y Categorías de ARIQ conectado exclusivamente a Cloud Firestore.
+ * Colecciones: `news` e `news_categories`.
+ * Las imágenes se persisten y recuperan directamente en Base64.
+ */
+
 import {
   listDocuments,
   getDocument,
@@ -6,11 +13,8 @@ import {
   deleteDocument,
   logInternalActivity,
 } from '../firebase/firestore.js';
-import { isFirebaseConfigured, db } from '../firebase/firebase.js';
+import { db } from '../firebase/firebase.js';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
-import { getLocalStore, setLocalStore, initLocalStore } from './supabase.js';
-
-initLocalStore();
 
 export const slugify = (text) => {
   return text
@@ -27,185 +31,158 @@ export const slugify = (text) => {
 };
 
 export const noticiasService = {
+  /**
+   * Obtiene las categorías de noticias desde Cloud Firestore
+   */
   async getCategorias() {
-    if (isFirebaseConfigured) {
-      try {
-        const cats = await listDocuments('news_categories');
-        if (cats.length > 0) {
-          return cats.sort((a, b) => (a.orden || 0) - (b.orden || 0));
-        }
-      } catch (err) {
-        console.warn('Error al cargar categorías de Firestore, usando caché:', err);
-      }
+    try {
+      const cats = await listDocuments('news_categories');
+      return cats.sort((a, b) => (a.orden || 0) - (b.orden || 0));
+    } catch (err) {
+      console.error('Error al recuperar categorías desde Firestore:', err);
+      return [];
     }
-    const categorias = getLocalStore('CATEGORIAS', []);
-    return [...categorias].sort((a, b) => (a.orden || 0) - (b.orden || 0));
   },
 
+  /**
+   * Obtiene el listado de noticias desde Cloud Firestore
+   */
   async getNoticias({ soloPublicadas = false, categoriaId = null, search = '' } = {}) {
-    if (isFirebaseConfigured) {
-      try {
-        const colRef = collection(db, 'news');
-        let q;
-        if (soloPublicadas) {
-          q = query(colRef, where('estado', '==', 'publicada'), orderBy('fecha_publicacion', 'desc'));
-        } else {
-          q = query(colRef, orderBy('fecha_publicacion', 'desc'));
-        }
+    try {
+      const colRef = collection(db, 'news');
+      let q;
+      if (soloPublicadas) {
+        q = query(colRef, where('estado', '==', 'publicada'), orderBy('fecha_publicacion', 'desc'));
+      } else {
+        q = query(colRef, orderBy('fecha_publicacion', 'desc'));
+      }
 
-        const snap = await getDocs(q);
-        let items = snap.docs.map((d) => ({
+      const snap = await getDocs(q);
+      let items = snap.docs.map((d) => {
+        const data = d.data();
+        return {
           id: d.id,
-          ...d.data(),
-          // Compatibility helper for UI expectations
-          categorias: { nombre: d.data().categoria_nombre || 'General' },
-        }));
+          ...data,
+          imagen_url: data.imagen_base64 || data.imagen_url,
+          categorias: { nombre: data.categoria_nombre || 'General' },
+        };
+      });
 
-        if (categoriaId) {
-          items = items.filter((n) => n.categoria_id === categoriaId);
-        }
-
-        if (search) {
-          const qStr = search.toLowerCase();
-          items = items.filter(
-            (n) =>
-              n.titulo?.toLowerCase().includes(qStr) ||
-              n.resumen?.toLowerCase().includes(qStr) ||
-              n.slug?.toLowerCase().includes(qStr)
-          );
-        }
-
-        if (items.length > 0) {
-          return items;
-        }
-      } catch (err) {
-        console.warn('Error al cargar noticias de Firestore, recurriendo a almacenamiento local:', err);
+      if (categoriaId) {
+        items = items.filter((n) => n.categoria_id === categoriaId);
       }
-    }
 
-    // Local storage fallback for offline demo
-    let items = getLocalStore('NOTICIAS', []);
-    const cats = getLocalStore('CATEGORIAS', []);
-    const catMap = Object.fromEntries(cats.map((c) => [c.id, c]));
+      if (search) {
+        const qStr = search.toLowerCase();
+        items = items.filter(
+          (n) =>
+            n.titulo?.toLowerCase().includes(qStr) ||
+            n.resumen?.toLowerCase().includes(qStr) ||
+            n.slug?.toLowerCase().includes(qStr)
+        );
+      }
 
-    items = items.map((item) => ({
-      ...item,
-      categorias: catMap[item.categoria_id] || { nombre: 'General' },
-    }));
-
-    if (soloPublicadas) {
-      items = items.filter((n) => n.estado === 'publicada');
+      return items;
+    } catch (err) {
+      console.error('Error al obtener noticias desde Firestore:', err);
+      return [];
     }
-    if (categoriaId) {
-      items = items.filter((n) => n.categoria_id === categoriaId);
-    }
-    if (search) {
-      const q = search.toLowerCase();
-      items = items.filter(
-        (n) =>
-          n.titulo?.toLowerCase().includes(q) ||
-          n.resumen?.toLowerCase().includes(q)
-      );
-    }
-
-    return items.sort(
-      (a, b) =>
-        new Date(b.fecha_publicacion || b.created_at) -
-        new Date(a.fecha_publicacion || a.created_at)
-    );
   },
 
+  /**
+   * Obtiene una noticia por su slug único desde Cloud Firestore
+   */
   async getNoticiaBySlug(slug) {
-    if (isFirebaseConfigured) {
-      try {
-        const colRef = collection(db, 'news');
-        const q = query(colRef, where('slug', '==', slug));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          const docSnap = snap.docs[0];
-          const data = docSnap.data();
-          return {
-            id: docSnap.id,
-            ...data,
-            categorias: { nombre: data.categoria_nombre || 'General' },
-          };
-        }
-      } catch (err) {
-        console.warn('Error al buscar noticia por slug en Firestore:', err);
+    try {
+      const colRef = collection(db, 'news');
+      const q = query(colRef, where('slug', '==', slug));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const docSnap = snap.docs[0];
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          ...data,
+          imagen_url: data.imagen_base64 || data.imagen_url,
+          categorias: { nombre: data.categoria_nombre || 'General' },
+        };
       }
+    } catch (err) {
+      console.error('Error al recuperar noticia por slug desde Firestore:', err);
     }
-
-    const items = await this.getNoticias({ soloPublicadas: false });
-    return items.find((n) => n.slug === slug) || null;
+    return null;
   },
 
+  /**
+   * Obtiene una noticia por su ID de documento desde Cloud Firestore
+   */
   async getNoticiaById(id) {
-    if (isFirebaseConfigured) {
-      try {
-        const data = await getDocument('news', id);
-        if (data) {
-          return {
-            ...data,
-            categorias: { nombre: data.categoria_nombre || 'General' },
-          };
-        }
-      } catch (err) {
-        console.warn('Error al obtener noticia de Firestore:', err);
+    try {
+      const data = await getDocument('news', id);
+      if (data) {
+        return {
+          ...data,
+          imagen_url: data.imagen_base64 || data.imagen_url,
+          categorias: { nombre: data.categoria_nombre || 'General' },
+        };
       }
+    } catch (err) {
+      console.error('Error al recuperar noticia por ID desde Firestore:', err);
     }
-    const items = await this.getNoticias({ soloPublicadas: false });
-    return items.find((n) => n.id === id) || null;
+    return null;
   },
 
+  /**
+   * Crea una nueva noticia en Cloud Firestore con imagen en Base64
+   */
   async createNoticia(noticia) {
     const slug = noticia.slug?.trim() ? slugify(noticia.slug) : slugify(noticia.titulo);
     const newRecord = {
       ...noticia,
       slug,
+      imagen_url: noticia.imagen_base64 || noticia.imagen_url || '',
+      imagen_base64: noticia.imagen_base64 || noticia.imagen_url || '',
       fecha_publicacion: noticia.fecha_publicacion || new Date().toISOString().split('T')[0],
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    if (isFirebaseConfigured) {
-      const created = await createDocument('news', newRecord);
-      await logInternalActivity('CREATE_NEWS', 'news', created.id, `Noticia creada: ${newRecord.titulo}`);
-      return created;
-    }
-
-    const items = getLocalStore('NOTICIAS', []);
-    const itemWithId = {
-      ...newRecord,
-      id: crypto.randomUUID ? crypto.randomUUID() : 'noticia_' + Date.now(),
-    };
-    items.unshift(itemWithId);
-    setLocalStore('NOTICIAS', items);
-    return itemWithId;
+    const created = await createDocument('news', newRecord);
+    await logInternalActivity(
+      'CREATE_NEWS',
+      'news',
+      created.id,
+      `Noticia creada en Firestore: ${newRecord.titulo}`
+    );
+    return created;
   },
 
+  /**
+   * Actualiza una noticia en Cloud Firestore
+   */
   async updateNoticia(id, noticia) {
     const slug = noticia.slug?.trim() ? slugify(noticia.slug) : slugify(noticia.titulo);
     const updatedData = {
       ...noticia,
       slug,
+      imagen_url: noticia.imagen_base64 || noticia.imagen_url,
+      imagen_base64: noticia.imagen_base64 || noticia.imagen_url,
       updated_at: new Date().toISOString(),
     };
 
-    if (isFirebaseConfigured) {
-      const updated = await updateDocument('news', id, updatedData);
-      await logInternalActivity('UPDATE_NEWS', 'news', id, `Noticia modificada: ${noticia.titulo || id}`);
-      return updated;
-    }
-
-    const items = getLocalStore('NOTICIAS', []);
-    const index = items.findIndex((n) => n.id === id);
-    if (index === -1) throw new Error('Noticia no encontrada');
-
-    items[index] = { ...items[index], ...updatedData };
-    setLocalStore('NOTICIAS', items);
-    return items[index];
+    const updated = await updateDocument('news', id, updatedData);
+    await logInternalActivity(
+      'UPDATE_NEWS',
+      'news',
+      id,
+      `Noticia modificada en Firestore: ${noticia.titulo || id}`
+    );
+    return updated;
   },
 
+  /**
+   * Alterna estado entre 'publicada' y 'borrador'
+   */
   async toggleEstado(id) {
     const current = await this.getNoticiaById(id);
     if (!current) throw new Error('Noticia no encontrada');
@@ -213,16 +190,12 @@ export const noticiasService = {
     return this.updateNoticia(id, { estado: nuevoEstado });
   },
 
+  /**
+   * Elimina una noticia de Cloud Firestore
+   */
   async deleteNoticia(id) {
-    if (isFirebaseConfigured) {
-      await deleteDocument('news', id);
-      await logInternalActivity('DELETE_NEWS', 'news', id, `Noticia eliminada id: ${id}`);
-      return true;
-    }
-
-    const items = getLocalStore('NOTICIAS', []);
-    const filtered = items.filter((n) => n.id !== id);
-    setLocalStore('NOTICIAS', filtered);
+    await deleteDocument('news', id);
+    await logInternalActivity('DELETE_NEWS', 'news', id, `Noticia eliminada id: ${id}`);
     return true;
   },
 };

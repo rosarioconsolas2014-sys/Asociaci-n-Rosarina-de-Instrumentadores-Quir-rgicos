@@ -350,8 +350,8 @@ export async function createAdminUser({ username, email, password, role = 'opera
   if (!cleanEmail.includes('@')) {
     throw new Error('El correo electrónico no es válido.');
   }
-  if (!password || password.length < 8) {
-    throw new Error('La contraseña debe tener al menos 8 caracteres.');
+  if (!password || password.length < 4) {
+    throw new Error('La contraseña debe tener al menos 4 caracteres.');
   }
   if (!['admin', 'editor', 'operador'].includes(role)) {
     throw new Error('Rol no válido.');
@@ -466,8 +466,8 @@ export async function changeAdminUserPassword(userId, newPassword) {
     throw new Error('No posee privilegios para cambiar la contraseña de este usuario.');
   }
 
-  if (!newPassword || newPassword.length < 8) {
-    throw new Error('La nueva contraseña debe tener como mínimo 8 caracteres.');
+  if (!newPassword || newPassword.length < 4) {
+    throw new Error('La nueva contraseña debe tener como mínimo 4 caracteres.');
   }
 
   const userRef = doc(db, 'admin_users', userId);

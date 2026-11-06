@@ -6,9 +6,11 @@ import { configuracionService } from '../services/configuracionService.js';
 export default function Footer() {
   const currentYear = new Date().getFullYear();
   const [logoSrc, setLogoSrc] = useState('/images/logo-ariq.png');
+  const [config, setConfig] = useState(null);
 
   useEffect(() => {
     configuracionService.getConfiguracion().then((cfg) => {
+      setConfig(cfg);
       if (cfg?.logotipo_base64) {
         setLogoSrc(cfg.logotipo_base64);
       }
@@ -29,14 +31,14 @@ export default function Footer() {
                 referrerPolicy="no-referrer"
               />
               <div>
-                <span className="font-bold text-xl text-white tracking-tight">ARIQ</span>
+                <span className="font-bold text-xl text-white tracking-tight">{config?.sigla || 'ARIQ'}</span>
                 <p className="text-xs text-stone-400">Asociación Rosarina de Instrumentadores Quirúrgicos</p>
               </div>
             </div>
             <p className="text-xs leading-relaxed text-stone-400">
-              <strong className="text-stone-300">Instrumentadores Quirúrgicos Profesionales de Rosario Asociación Civil</strong>
+              <strong className="text-stone-300">{config?.nombre_oficial || 'Instrumentadores Quirúrgicos Profesionales de Rosario Asociación Civil'}</strong>
               <br />
-              Personería Jurídica: Resolución I.G.P.J. N° 412/1988
+              Personería Jurídica: {config?.personeria_juridica || 'Resolución I.G.P.J. N° 412/1988'}
             </p>
             <div className="inline-flex items-center gap-1.5 text-xs text-red-400 font-medium pt-1">
               <HeartPulse className="w-3.5 h-3.5 text-red-500" />
@@ -116,17 +118,17 @@ export default function Footer() {
             <ul className="space-y-3 text-xs text-stone-400">
               <li className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-stone-400 shrink-0 mt-0.5" />
-                <span>Rosario, Provincia de Santa Fe, República Argentina</span>
+                <span>{config?.sede_principal || 'Rosario, Provincia de Santa Fe, República Argentina'}</span>
               </li>
               <li className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-stone-400 shrink-0" />
-                <a href="mailto:contacto@ariq.org.ar" className="hover:text-white transition-colors">
-                  contacto@ariq.org.ar
+                <a href={`mailto:${config?.contacto?.email || 'contacto@ariq.org.ar'}`} className="hover:text-white transition-colors">
+                  {config?.contacto?.email || 'contacto@ariq.org.ar'}
                 </a>
               </li>
               <li className="flex items-center gap-2.5">
                 <Phone className="w-4 h-4 text-stone-400 shrink-0" />
-                <span>Atención: Lunes a Viernes 14:00 a 19:00 hs</span>
+                <span>Atención: {config?.contacto?.horario_atencion || 'Lunes a Viernes 14:00 a 19:00 hs'}</span>
               </li>
             </ul>
             <div className="mt-5 pt-4 border-t border-stone-800">
